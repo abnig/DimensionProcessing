@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch 
+		http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/task
+        http://www.springframework.org/schema/task/spring-task.xsd        
+        http://www.springframework.org/schema/jdbc 
+        http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+        http://www.springframework.org/schema/util 
+        http://www.springframework.org/schema/util/spring-util.xsd">
+	<context:annotation-config />
+	<context:component-scan base-package="com.poc, dim.processing" />
+	<import resource="splitter-db-beans.xml" />
+	<context:property-placeholder location="classpath:config/splitter.properties" />
+	<context:property-placeholder location="classpath:config/splitter-jdbc.properties" />
+
+	<bean id="taskExecutor"
+		class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<property name="corePoolSize" value="3" />
+		<property name="maxPoolSize" value="3" />
+		<property name="WaitForTasksToCompleteOnShutdown" value="true" />
+	</bean>
+
+	<bean id="truncateAccountHashTasklet" class="dim.processing.poc.tasklet.ExecuteDDLTasklet">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql" value="TRUNCATE TABLE dim.ACC_HASH" />
+	</bean>
+	
+	<bean id="createAccountHashIndexTasklet" class="dim.processing.poc.tasklet.ExecuteDDLTasklet">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql" value="ALTER TABLE dim.ACC_HASH ADD UNIQUE INDEX ID1 (HASH_PK ASC, HASH_COL ASC)" />
+	</bean>
+	
+	<bean id="analyzeAccountHashTasklet" class="dim.processing.poc.tasklet.ExecuteDDLTasklet">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql" value="OPTIMIZE TABLE dim.ACC_HASH" />
+	</bean>
+	
+	<bean id="analyzeAccountDimTasklet" class="dim.processing.poc.tasklet.ExecuteDDLTasklet">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql" value="OPTIMIZE TABLE dim.ACC_DIM_HASH" />
+	</bean>			
+	
+	<bean id="createAccountHashColumnsIndexTasklet" class="dim.processing.poc.tasklet.ExecuteDDLTasklet">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql" value="ALTER TABLE dim.ACC_HASH ADD INDEX ID2 (HASH_COL ASC)" />
+	</bean>	
+	
+	<bean id="deleteNoChangeRecordsFromHashTableTasklet" class="dim.processing.poc.tasklet.ExecuteDDLTasklet">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql" value="DELETE ah FROM dim.ACC_HASH AH WHERE EXISTS (SELECT 1 FROM dim.ACC_DIM_HASH AHD WHERE AHD.HASH_PK = AH.HASH_PK and AHD.HASH_COL = AH.HASH_COL and AHD.IS_ACTV_FL = 'Y');" />
+	</bean>		
+
+	<util:map id="accountSortMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="OPER_AGMT_CD" value="ASCENDING" />
+		<entry key="OPER_AGMT_ID" value="ASCENDING" />
+	</util:map>
+
+	<bean id="accountRowMapper" class="dim.processing.poc.rowmapper.AccountRowMapper" />
+
+	<bean id="accountQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value>
+				<![CDATA[SELECT OPER_AGMT_CD, OPER_AGMT_ID, UNQ_REL_ID,
+				    	SRC_REL_ID, SRC_REL_CD, SRC_DESC_TX, SRC_REL_CTRY_NM, SRC_REL_CTRY_CD,
+				    	REL_NM, REL_NM_TTL_NM, REL_SUR_NM, REL_FRST_NM, REL_MID_NM,
+				    	REL_NM_SFX_NM, REL_XTRA_NM, REL_TYPE_CD, REL_TYPE_CD_DESC_TX,
+				    	REL_ID_TYPE_CD, SRC_SPEC_DATA_AVL_FL, STAT_CD, OPN_DT, CLS_DT,
+				    	MUNT_CD, MUNT_SHNM, MUNT_LONG_NM,LOB_SEG_CD, CTRCT_LE_CD, DSPL_CD, 
+				    	SRC_CAT_CD, CRT_TS, UPD_TS]]>
+			</value>
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[FROM dim.ACC]]></value>
+		</property>
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="accountSortMap" />
+	</bean>
+
+	<bean id="accountDBItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="300000" />
+		<property name="queryProvider" ref="accountQueryProvider" />
+		<property name="pageSize" value="300000" />
+		<property name="rowMapper" ref="accountRowMapper" />
+	</bean>
+
+	<bean id="accountHashJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[INSERT INTO dim.ACC_HASH
+(OPER_AGMT_CD,
+OPER_AGMT_ID,
+UNQ_REL_ID,
+SRC_REL_ID,
+SRC_REL_CD,
+SRC_DESC_TX,
+SRC_REL_CTRY_NM,
+SRC_REL_CTRY_CD,
+REL_NM,
+REL_NM_TTL_NM,
+REL_SUR_NM,
+REL_FRST_NM,
+REL_MID_NM,
+REL_NM_SFX_NM,
+REL_XTRA_NM,
+REL_TYPE_CD,
+REL_TYPE_CD_DESC_TX,
+REL_ID_TYPE_CD,
+SRC_SPEC_DATA_AVL_FL,
+STAT_CD,
+OPN_DT,
+CLS_DT,
+MUNT_CD,
+MUNT_SHNM,
+MUNT_LONG_NM,
+LOB_SEG_CD,
+CTRCT_LE_CD,
+DSPL_CD,
+SRC_CAT_CD,
+CRT_TS,
+UPD_TS,
+HASH_PK,
+HASH_COL)
+VALUES
+(:OPER_AGMT_CD,
+:OPER_AGMT_ID,
+:UNQ_REL_ID,
+:SRC_REL_ID,
+:SRC_REL_CD,
+:SRC_DESC_TX,
+:SRC_REL_CTRY_NM,
+:SRC_REL_CTRY_CD,
+:REL_NM,
+:REL_NM_TTL_NM,
+:REL_SUR_NM,
+:REL_FRST_NM,
+:REL_MID_NM,
+:REL_NM_SFX_NM,
+:REL_XTRA_NM,
+:REL_TYPE_CD,
+:REL_TYPE_CD_DESC_TX,
+:REL_ID_TYPE_CD,
+:SRC_SPEC_DATA_AVL_FL,
+:STAT_CD,
+:OPN_DT,
+:CLS_DT,
+:MUNT_CD,
+:MUNT_SHNM,
+:MUNT_LONG_NM,
+:LOB_SEG_CD,
+:CTRCT_LE_CD,
+:DSPL_CD,
+:SRC_CAT_CD,
+:CRT_TS,
+:UPD_TS,
+:hashPK,
+:hashColumns);
+            ]]>
+			</value>
+		</property>
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+
+	<bean id="accountProcessor" class="dim.processing.poc.processor.AccountProcessor" />
+	
+<!-- START UPDATE LOGIC -->
+	<util:map id="updateSortMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="NH.OPER_AGMT_CD" value="ASCENDING" />
+		<entry key="NH.OPER_AGMT_ID" value="ASCENDING" />
+	</util:map>
+	<bean id="identifyUpdateQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value><![CDATA[SELECT NH.*]]></value>
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[dim.ACC_DIM_HASH DH RIGHT OUTER JOIN dim.ACC_HASH 
+		NH ON DH.HASH_PK = NH.HASH_PK AND DH.IS_ACTV_FL = 'Y']]></value>
+		</property>
+		<property name="whereClause">
+			<value><![CDATA[WHERE DH.HASH_COL <> NH.HASH_COL]]>
+			</value>
+		</property>
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="updateSortMap" />
+	</bean>
+	<bean id="identifyUpdateItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="300000" />
+		<property name="queryProvider" ref="identifyUpdateQueryProvider" />
+		<property name="pageSize" value="300000" />
+		<property name="rowMapper" ref="accountHashRowMapper" />
+	</bean>
+	<bean id="updateDimensionHashJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value> <![CDATA[UPDATE dim.ACC_DIM_HASH SET EFF_END_DT = sysDate(), 
+		IS_ACTV_FL = 'N', UPD_TS = sysDate() WHERE OPER_AGMT_ID = :OPER_AGMT_ID and OPER_AGMT_CD = :OPER_AGMT_CD and IS_ACTV_FL 
+		= 'Y'; ]]>
+			</value>
+		</property>
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+	<!-- END UPDATE LOGIC -->
+	<!-- START INSERT LOGIC -->
+	<bean id="accountHashRowMapper" class="dim.processing.poc.rowmapper.AccountHashRowMapper" />
+	<util:map id="insertSortMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="NH.OPER_AGMT_CD" value="ASCENDING" />
+		<entry key="NH.OPER_AGMT_ID" value="ASCENDING" />
+	</util:map>
+	<bean id="identifyInsertQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value><![CDATA[ SELECT NH.OPER_AGMT_CD,    NH.OPER_AGMT_ID,    NH.UNQ_REL_ID,    NH.SRC_REL_ID,
+    NH.SRC_REL_CD,    NH.SRC_DESC_TX,    NH.SRC_REL_CTRY_NM,    NH.SRC_REL_CTRY_CD,
+    NH.REL_NM,    NH.REL_NM_TTL_NM,    NH.REL_SUR_NM,    NH.REL_FRST_NM,
+    NH.REL_MID_NM,    NH.REL_NM_SFX_NM,    NH.REL_XTRA_NM,    NH.REL_TYPE_CD,
+    NH.REL_TYPE_CD_DESC_TX,    NH.REL_ID_TYPE_CD,    NH.SRC_SPEC_DATA_AVL_FL,    NH.STAT_CD,
+    NH.OPN_DT,    NH.CLS_DT,    NH.MUNT_CD,    NH.MUNT_SHNM,
+    NH.MUNT_LONG_NM,    NH.LOB_SEG_CD,    NH.CTRCT_LE_CD,    NH.DSPL_CD,
+    NH.SRC_CAT_CD,    NH.CRT_TS,    NH.UPD_TS,    NH.HASH_PK,    NH.HASH_COL]]></value>
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[FROM dim.ACC_HASH NH]]></value>
+		</property>
+		<property name="whereClause">
+			<value><![CDATA[WHERE NOT EXISTS (SELECT 1 FROM dim.ACC_DIM_HASH DH WHERE NH.HASH_PK = DH.HASH_PK AND DH.IS_ACTV_FL = 'Y')]]>
+			</value>
+		</property>
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="insertSortMap" />
+	</bean>
+	<bean id="identifyInsertItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="300000" />
+		<property name="queryProvider" ref="identifyInsertQueryProvider" />
+		<property name="pageSize" value="300000" />
+		<property name="rowMapper" ref="accountHashRowMapper" />
+	</bean>
+	<bean id="accountDimensionHashJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value> <![CDATA[INSERT INTO dim.ACC_DIM_HASH
+(OPER_AGMT_CD,OPER_AGMT_ID,UNQ_REL_ID,SRC_REL_ID,SRC_REL_CD,SRC_DESC_TX,SRC_REL_CTRY_NM,SRC_REL_CTRY_CD,
+REL_NM,REL_NM_TTL_NM,REL_SUR_NM,REL_FRST_NM,REL_MID_NM,REL_NM_SFX_NM,REL_XTRA_NM,REL_TYPE_CD,REL_TYPE_CD_DESC_TX,
+REL_ID_TYPE_CD,SRC_SPEC_DATA_AVL_FL,STAT_CD,OPN_DT,CLS_DT,MUNT_CD,MUNT_SHNM,MUNT_LONG_NM,LOB_SEG_CD,CTRCT_LE_CD,
+DSPL_CD,SRC_CAT_CD,EFF_STRT_DT,EFF_END_DT,IS_ACTV_FL,HASH_PK,HASH_COL,CRT_USER_ID,UPD_USER_ID,CRT_TS,UPD_TS)
+VALUES
+(:OPER_AGMT_CD,:OPER_AGMT_ID,:UNQ_REL_ID,:SRC_REL_ID,
+:SRC_REL_CD,:SRC_DESC_TX,:SRC_REL_CTRY_NM,:SRC_REL_CTRY_CD,:REL_NM,:REL_NM_TTL_NM,:REL_SUR_NM,:REL_FRST_NM,:REL_MID_NM,:REL_NM_SFX_NM,
+:REL_XTRA_NM,:REL_TYPE_CD,:REL_TYPE_CD_DESC_TX,:REL_ID_TYPE_CD,:SRC_SPEC_DATA_AVL_FL,:STAT_CD,:OPN_DT,:CLS_DT,:MUNT_CD,:MUNT_SHNM,
+:MUNT_LONG_NM,:LOB_SEG_CD,:CTRCT_LE_CD,:DSPL_CD,:SRC_CAT_CD,:EFF_STRT_DT,:EFF_END_DT,:IS_ACTV_FL,
+:hashPK,:hashColumns,:CRT_USER_ID,:UPD_USER_ID,:CRT_TS,:UPD_TS) 
+		]]>
+			</value>
+		</property>
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+	<bean id="insertProcessor" class="dim.processing.poc.processor.AccountHashProcessor" /> 
+		<!--  END INSERT LOGIC --> 
+	
+	<!-- SOFT DELETE LOGIC -->
+	<bean id="integerRowMapper" class="dim.processing.poc.rowmapper.NodeSKRowMapper" />
+	<util:map id="deleteSortMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="ACC_SK" value="ASCENDING" />
+	</util:map>
+	<bean id="identifyDeleteQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value><![CDATA[ SELECT DH.ACC_SK]]>
+			</value>
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[ FROM dim.ACC_DIM_HASH DH LEFT OUTER JOIN dim.ACC_HASH 
+		NH ON DH.HASH_PK = NH.HASH_PK ]]>
+			</value>
+		</property>
+		<property name="whereClause">
+			<value><![CDATA[ WHERE DH.IS_ACTV_FL = 'Y' AND NH.HASH_PK IS NULL ]]>
+			</value>
+		</property>
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="deleteSortMap" />
+	</bean>
+	<bean id="identifyDeleteItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="300000" />
+		<property name="queryProvider" ref="identifyDeleteQueryProvider" />
+		<property name="pageSize" value="300000" />
+		<property name="rowMapper" ref="integerRowMapper" />
+	</bean>
+	<bean id="deleteDimensionHashJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value> <![CDATA[UPDATE dim.ACC_DIM_HASH SET EFF_END_DT = sysDate(), 
+		IS_ACTV_FL = 'N', UPD_TS = sysDate() WHERE ACC_SK = :nodeSK; ]]>
+			</value>
+		</property>
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+	<!-- END SOFT DELETE LOGIC -->
+
+</beans>	

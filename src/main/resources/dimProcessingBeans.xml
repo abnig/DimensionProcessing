@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch 
+		http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/task
+        http://www.springframework.org/schema/task/spring-task.xsd        
+        http://www.springframework.org/schema/jdbc 
+        http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+        http://www.springframework.org/schema/util 
+        http://www.springframework.org/schema/util/spring-util.xsd">
+	<context:annotation-config />
+	<context:component-scan base-package="com.poc, dim.processing" />
+	<import resource="splitter-db-beans.xml" />
+	<context:property-placeholder location="classpath:config/splitter.properties" />
+	<context:property-placeholder location="classpath:config/splitter-jdbc.properties" />
+	
+	<bean id="truncateFicNodeBaseTableTasklet" class="dim.processing.poc.tasklet.ExecuteDDLTasklet">
+		<property name="dataSource" ref="mysqlDataSource"/>
+		<property name="sql" value="TRUNCATE TABLE dim.FIC_NODE_HASH"/>
+	</bean>
+
+	<util:map id="ficNodeSortMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="NODE_ID" value="ASCENDING" />
+	</util:map>
+
+	<bean id="ficNodeRowMapper" class="dim.processing.poc.rowmapper.FicNodeRowMapper" />
+
+	<bean id="ficNodeQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value><![CDATA[
+			SELECT T_LAST_USER_ID, T_CREATOR_ID,
+			T_CREATION_DATE, T_LAST_WRITE,
+			NODE_ID, NODE_TYP_ID,
+			NODE_NM, NODE_DESC_TX,
+			NODE_OWN_ID, NODE_STAT_CD, EFF_DT
+			]]>
+			</value>
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[
+						FROM FIC_NODE
+					]]>
+			</value>
+		</property>
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="ficNodeSortMap" />
+	</bean>
+
+	<bean id="ficNodeDBItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="25" />
+		<property name="queryProvider" ref="ficNodeQueryProvider" />
+		<property name="pageSize" value="25" />
+		<property name="rowMapper" ref="ficNodeRowMapper" />
+	</bean>
+	
+	<bean id="ficNodeBaseJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[INSERT INTO dim.FIC_NODE_HASH (T_LAST_USER_ID,T_CREATOR_ID,T_CREATION_DATE,T_LAST_WRITE,
+				NODE_ID,NODE_TYP_ID,NODE_NM,
+				NODE_DESC_TX,NODE_OWN_ID,NODE_STAT_CD,
+				EFF_DT,HASH_PK,HASH_COL)
+				VALUES(:lastWriteId,:creatorId,:creationDate,:lastWriteDate,
+					:nodeId,:nodeTypeId,:nodeName,
+					:nodeDescText,:nodeOwnId,:nodeStatusCode,
+					:effectiveDate,:hashPK,:hashColumns);
+            ]]>
+			</value>
+		</property>
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>	
+	
+	<bean id="fnv132" class="org.getopt.util.hash.FNV132"/>
+	
+	<bean id="ficNodeProcessor" class="dim.processing.poc.processor.FicNodeProcessor">
+		<property name="hashGeneratorClass" ref="fnv132"/>
+ 	</bean>
+ 	
+<!-- START UPDATE LOGIC -->
+ 	<util:map id="updateSortMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="NH.NODE_ID" value="ASCENDING" />
+	</util:map>
+	
+ 	<bean id="identifyUpdateQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value><![CDATA[SELECT NH.*]]></value> 
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[dim.FIC_NODE_DIM_HASH DH
+			RIGHT OUTER JOIN 
+			 dim.FIC_NODE_HASH NH ON DH.HASH_PK = NH.HASH_PK AND DH.IS_ACTV_FL = 'Y']]></value>
+		</property>
+		<property name="whereClause">
+			<value><![CDATA[WHERE DH.HASH_COL <> NH.HASH_COL]]>
+			</value>
+		</property>
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="updateSortMap" />
+	</bean>
+	
+	<bean id="identifyUpdateItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="25" />
+		<property name="queryProvider" ref="identifyUpdateQueryProvider" />
+		<property name="pageSize" value="25" />
+		<property name="rowMapper" ref="ficNodeHashRowMapper" />
+	</bean>	
+	
+ 	<bean id="updateDimensionHashJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[UPDATE dim.FIC_NODE_DIM_HASH SET EFF_END_DT = sysDate(),
+			IS_ACTV_FL = 'N', UPD_TS = sysDate() WHERE NODE_ID = :nodeId and IS_ACTV_FL = 'Y';
+            ]]>
+			</value>
+		</property>
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>	
+	
+
+<!-- END UPDATE LOGIC --> 	
+ 	
+<!-- START INSERT LOGIC  -->
+
+	<bean id="ficNodeHashRowMapper"	 class="dim.processing.poc.rowmapper.FicNodeHashRowMapper"/>
+
+ 	<util:map id="insertSortMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="NODE_ID" value="ASCENDING" />
+	</util:map>
+	
+ 	<bean id="identifyInsertQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value><![CDATA[SELECT NH.T_LAST_USER_ID, NH.T_CREATOR_ID, NH.T_CREATION_DATE, NH.T_LAST_WRITE, 
+			NH.NODE_ID, NH.NODE_TYP_ID, NH.NODE_NM, NH.NODE_DESC_TX, 
+			NH.NODE_OWN_ID, NH.NODE_STAT_CD, NH.EFF_DT, NH.HASH_PK, NH.HASH_COL, NH.NODE_ID]]></value> 
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[FROM dim.FIC_NODE_HASH NH]]></value>
+		</property>
+		<property name="whereClause">
+			<value><![CDATA[WHERE NOT EXISTS (SELECT 1 FROM dim.FIC_NODE_DIM_HASH DH WHERE NH.HASH_PK = DH.HASH_PK AND DH.IS_ACTV_FL = 'Y')]]>
+			</value>
+		</property>
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="insertSortMap" />
+	</bean>
+	
+	<bean id="identifyInsertItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="25" />
+		<property name="queryProvider" ref="identifyInsertQueryProvider" />
+		<property name="pageSize" value="25" />
+		<property name="rowMapper" ref="ficNodeHashRowMapper" />
+	</bean>
+ 
+	<bean id="ficNodeDimensionHashJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[INSERT INTO dim.FIC_NODE_DIM_HASH (NODE_SK,NODE_ID,NODE_TYP_ID,NODE_NM,NODE_DESC_TX,
+            NODE_OWN_ID,NODE_STAT_CD,EFF_DT,EFF_STRT_DT,EFF_END_DT,
+			IS_ACTV_FL,CRT_TS,CRT_USER_ID,UPD_USER_ID,UPD_TS,HASH_PK,HASH_COL)
+			VALUES(:nodeSK,:nodeId,:nodeTypeId,:nodeName,:nodeDescText,
+			:nodeOwnId,:nodeStatusCode,:effectiveDate,:effectiveStartDate,:effectiveEndDate,
+			:isActiveFlag,:creationDate,:creatorId,:lastWriteId,:lastWriteDate,:hashPK,:hashColumns);
+            ]]>
+			</value>
+		</property>
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+	
+	<bean id="insertProcessor" class="dim.processing.poc.processor.FicNodeHashProcessor"/>
+
+<!-- END INSERT LOGIC  --> 	
+ 	
+ <!-- SOFT DELETE LOGIC -->
+ 
+ 	<bean id="integerRowMapper" class="dim.processing.poc.rowmapper.NodeSKRowMapper" />
+ 
+ 	<util:map id="deleteSortMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="NODE_SK" value="ASCENDING" />
+	</util:map>
+ 
+ 	<bean id="identifyDeleteQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value><![CDATA[
+			SELECT DH.NODE_SK]]>
+			</value> 
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[
+			FROM 
+			dim.FIC_NODE_DIM_HASH DH
+			LEFT OUTER JOIN 
+			 dim.FIC_NODE_HASH NH ON DH.HASH_PK = NH.HASH_PK
+					]]>
+			</value>
+		</property>
+		<property name="whereClause">
+			<value><![CDATA[
+			WHERE DH.IS_ACTV_FL = 'Y' AND NH.HASH_PK IS NULL
+					]]>
+			</value>
+		</property>
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="deleteSortMap" />
+	</bean>
+	
+	<bean id="identifyDeleteItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="25" />
+		<property name="queryProvider" ref="identifyDeleteQueryProvider" />
+		<property name="pageSize" value="25" />
+		<property name="rowMapper" ref="integerRowMapper" />
+	</bean>
+
+ 	<bean id="deleteDimensionHashJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[UPDATE dim.FIC_NODE_DIM_HASH SET EFF_END_DT = sysDate(),
+			IS_ACTV_FL = 'N', UPD_TS = sysDate() WHERE NODE_SK = :nodeSK;
+            ]]>
+			</value>
+		</property>
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+	
+<!--  END SOFT DELETE LOGIC -->	
+	
+</beans>	

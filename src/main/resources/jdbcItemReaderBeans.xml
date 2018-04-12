@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch 
+		http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/task
+        http://www.springframework.org/schema/task/spring-task.xsd        
+        http://www.springframework.org/schema/jdbc 
+        http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+        http://www.springframework.org/schema/util 
+        http://www.springframework.org/schema/util/spring-util.xsd">
+	<context:annotation-config />
+	<context:component-scan base-package="com.poc, dim.processing" />
+	<import resource="splitter-db-beans.xml" />
+	<context:property-placeholder location="classpath:config/splitter.properties" />
+	<context:property-placeholder
+		location="classpath:config/splitter-jdbc.properties" />
+
+	<bean id="accountDBItemReaderJdbc"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader"
+		scope="step">
+		<property name="verifyCursorPosition" value="false" />
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value><![CDATA[SELECT OPER_AGMT_CD,OPER_AGMT_ID,UNQ_REL_ID,SRC_REL_ID,
+    SRC_REL_CD,SRC_DESC_TX,SRC_REL_CTRY_NM,
+    SRC_REL_CTRY_CD,REL_NM,REL_NM_TTL_NM,REL_SUR_NM,
+    REL_FRST_NM,REL_MID_NM,REL_NM_SFX_NM,
+    REL_XTRA_NM,REL_TYPE_CD,REL_TYPE_CD_DESC_TX,
+    REL_ID_TYPE_CD,SRC_SPEC_DATA_AVL_FL,STAT_CD,
+    OPN_DT,CLS_DT,MUNT_CD,MUNT_SHNM,MUNT_LONG_NM,LOB_SEG_CD,
+    CTRCT_LE_CD,DSPL_CD,SRC_CAT_CD,
+    CRT_TS,UPD_TS FROM dim.ACC
+			]]>
+			</value>
+		</property>
+		<property name="rowMapper" ref="accountRowMapper" />
+		<property name="fetchSize" value="100000"/>	
+	</bean>
+
+	<bean id="identifyDeleteItemReaderJdbc"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader"
+		scope="step">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="verifyCursorPosition" value="false" />
+		<property name="sql">
+			<value><![CDATA[ SELECT DH.ACC_SK FROM dim.ACC_DIM_HASH DH WHERE NOT EXISTS (SELECT 1 FROM dim.ACC_HASH NH 
+			WHERE DH.HASH_PK = NH.HASH_PK AND DH.IS_ACTV_FL = 'Y' )]]>
+			</value>
+		</property>
+		<property name="rowMapper" ref="integerRowMapper" />
+		<property name="fetchSize" value="100000"/>	
+	</bean>
+
+	<bean id="identifyInsertItemReaderJdbc"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader"
+		scope="step">
+		<property name="verifyCursorPosition" value="false" />
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value><![CDATA[ SELECT NH.OPER_AGMT_CD,    NH.OPER_AGMT_ID,    NH.UNQ_REL_ID,    NH.SRC_REL_ID,
+    NH.SRC_REL_CD,    NH.SRC_DESC_TX,    NH.SRC_REL_CTRY_NM,    NH.SRC_REL_CTRY_CD,
+    NH.REL_NM,    NH.REL_NM_TTL_NM,    NH.REL_SUR_NM,    NH.REL_FRST_NM,
+    NH.REL_MID_NM,    NH.REL_NM_SFX_NM,    NH.REL_XTRA_NM,    NH.REL_TYPE_CD,
+    NH.REL_TYPE_CD_DESC_TX,    NH.REL_ID_TYPE_CD,    NH.SRC_SPEC_DATA_AVL_FL,    NH.STAT_CD,
+    NH.OPN_DT,    NH.CLS_DT,    NH.MUNT_CD,    NH.MUNT_SHNM,
+    NH.MUNT_LONG_NM,    NH.LOB_SEG_CD,    NH.CTRCT_LE_CD,    NH.DSPL_CD,
+    NH.SRC_CAT_CD,    NH.CRT_TS,    NH.UPD_TS,    NH.HASH_PK,    NH.HASH_COL FROM dim.ACC_HASH NH
+    WHERE NOT EXISTS (SELECT 1 FROM dim.ACC_DIM_HASH DH WHERE NH.HASH_PK = DH.HASH_PK AND DH.IS_ACTV_FL = 'Y')]]>
+			</value>
+		</property>
+		<property name="rowMapper" ref="accountHashRowMapper" />
+		<property name="fetchSize" value="100000"/>
+	</bean>
+
+
+	<bean id="identifyUpdateItemReaderJdbc"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader"
+		scope="step">
+		<property name="verifyCursorPosition" value="false" />
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value><![CDATA[SELECT NH.* FROM dim.ACC_DIM_HASH DH, dim.ACC_HASH 	NH 
+			WHERE DH.HASH_PK = NH.HASH_PK AND DH.IS_ACTV_FL = 'Y' AND DH.HASH_COL <> NH.HASH_COL]]>
+			</value>
+		</property>
+		<property name="rowMapper" ref="accountHashRowMapper" />
+		<property name="fetchSize" value="100000"/>
+	</bean>
+
+</beans>

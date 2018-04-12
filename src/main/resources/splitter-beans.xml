@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch 
+		http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/task
+        http://www.springframework.org/schema/task/spring-task.xsd        
+        http://www.springframework.org/schema/jdbc 
+        http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+        http://www.springframework.org/schema/util 
+        http://www.springframework.org/schema/util/spring-util.xsd">
+	<context:annotation-config />
+	<context:component-scan base-package="com.poc" />
+	<import resource="splitter-db-beans.xml" />
+	<context:property-placeholder location="classpath:config/splitter.properties" />
+	<context:property-placeholder location="classpath:config/splitter-jdbc.properties" />
+
+	<bean id="employeeInputDataRowMapper" class="com.poc.rowmapper.inbound.EmployeeInputDataRowMapper" />
+
+	<bean id="employeeInputDataProcessor" class="com.poc.processor.EmployeeInputDataProcessor" />
+
+   <bean id="departmentClazz" class="java.lang.Class" factory-method="forName">
+      <constructor-arg value="com.poc.domain.output.Department"/>
+   </bean>
+   
+   <bean id="employeeClazz" class="java.lang.Class" factory-method="forName">
+      <constructor-arg value="com.poc.domain.output.Employee"/>
+   </bean>   
+   
+   <bean id="employeeAddressClazz" class="java.lang.Class" factory-method="forName">
+      <constructor-arg value="com.poc.domain.output.EmployeeAddress"/>
+   </bean>
+   
+   <bean id="employeeSalaryClazz" class="java.lang.Class" factory-method="forName">
+      <constructor-arg value="com.poc.domain.output.EmployeeSalary"/>
+   </bean>      
+         
+	<util:map id="jdbcItemWriterMap" map-class="java.util.LinkedHashMap"
+		key-type="java.lang.Class" value-type="org.springframework.batch.item.ItemWriter">
+		<entry key-ref="departmentClazz" value-ref="departmentJdbcItemWriter"/>
+		<entry key-ref="employeeClazz" value-ref="employeeJdbcItemWriter"/>
+		<entry key-ref="employeeAddressClazz" value-ref="employeeAddressJdbcItemWriter"/>
+		<entry key-ref="employeeSalaryClazz" value-ref="employeeSalaryJdbcItemWriter"/>
+	</util:map>
+	
+	<util:map id="flatFileItemWriterMap" map-class="java.util.LinkedHashMap"
+		key-type="java.lang.Class" value-type="org.springframework.batch.item.ItemWriter">
+		<entry key-ref="departmentClazz" value-ref="departmentFlatFileItemWriter"/>
+		<entry key-ref="employeeClazz" value-ref="employeeFlatFileItemWriter"/>
+		<entry key-ref="employeeAddressClazz" value-ref="employeeAddressFlatFileItemWriter"/>
+		<entry key-ref="employeeSalaryClazz" value-ref="employeeSalaryFlatFileItemWriter"/>
+	</util:map>		
+			
+	<bean id="employeeInputDataSplitterClassifier" class="com.poc.classifier.SplitterClassifier">
+		<property name="itemWriterMap" ref="jdbcItemWriterMap" />
+	</bean>
+	
+	<bean id="employeeInputDataClassifierCompositeItemWriter" class="com.poc.writer.BaseJdbcItemWriter">
+		<property name="classifier" ref="employeeInputDataSplitterClassifier"/>
+	</bean>
+</beans>	

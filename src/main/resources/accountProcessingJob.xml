@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch 
+		http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/task
+        http://www.springframework.org/schema/task/spring-task.xsd">
+	<import resource="splitter-db-beans.xml" />
+	<import resource="accountProcessingBeans.xml" />
+	<import resource="jdbcItemReaderBeans.xml" />	
+
+	<batch:job id="accountDimProcessingJob" restartable="true">
+	
+		<batch:step id="truncateAccountHashStep" next="populateAccountHashStep">
+			<batch:tasklet ref="truncateAccountHashTasklet" />
+		</batch:step>
+		
+		<batch:step id="populateAccountHashStep" next="createAccountHashIndexStep">
+			<batch:tasklet>
+				<batch:chunk reader="accountDBItemReaderJdbc" processor="accountProcessor"
+					writer="accountHashJdbcItemWriter" commit-interval="300000">
+				</batch:chunk>
+			</batch:tasklet>		
+		</batch:step>
+
+		<batch:step id="createAccountHashIndexStep" next="analyzeAccountHashTaskletAfterIndexCreationStep">
+			<batch:tasklet ref="createAccountHashIndexTasklet" />
+		</batch:step>
+		
+		<batch:step id="analyzeAccountHashTaskletAfterIndexCreationStep" next="processDeleteStep">
+			<batch:tasklet ref="analyzeAccountHashTasklet" />
+		</batch:step>		
+		
+		<batch:step id="processDeleteStep" next="analyzeAccountDimTaskletAfterDeleteStep">
+			<batch:tasklet>
+				<batch:chunk reader="identifyDeleteItemReaderJdbc"
+					writer="deleteDimensionHashJdbcItemWriter" commit-interval="300000">
+				</batch:chunk>
+			</batch:tasklet>
+		</batch:step>
+		
+		<batch:step id="analyzeAccountDimTaskletAfterDeleteStep" next="deleteNoChangeRecordsFromHashTableStep">
+			<batch:tasklet ref="analyzeAccountDimTasklet" />
+		</batch:step>		
+		
+		<batch:step id="deleteNoChangeRecordsFromHashTableStep" next="analyzeAccountHashTaskletAfterDeleteStep">
+			<batch:tasklet ref="deleteNoChangeRecordsFromHashTableTasklet" />
+		</batch:step>	
+		
+		<batch:step id="analyzeAccountHashTaskletAfterDeleteStep" next="processInsertStep">
+			<batch:tasklet ref="analyzeAccountHashTasklet" />
+		</batch:step>							
+		
+		<batch:step id="processInsertStep" next="analyzeAccountDimTaskletAfterInsertStep">
+			<batch:tasklet>
+				<batch:chunk reader="identifyInsertItemReaderJdbc" processor="insertProcessor"
+					writer="accountDimensionHashJdbcItemWriter" commit-interval="300000">
+				</batch:chunk>
+			</batch:tasklet>
+		</batch:step>
+		
+		<batch:step id="analyzeAccountDimTaskletAfterInsertStep" next="processUpdateStep">
+			<batch:tasklet ref="analyzeAccountDimTasklet" />
+		</batch:step>		
+		
+		<batch:step id="processUpdateStep" next="analyzeAccountDimTaskletAfterUpdateStep">
+			<batch:tasklet>
+				<batch:chunk reader="identifyUpdateItemReaderJdbc" processor="accountHashUpdateProcessor"
+					writer="accountDimensionHashUpdateWriter" commit-interval="300000">
+				</batch:chunk>
+			</batch:tasklet>
+		</batch:step>
+		
+		<batch:step id="analyzeAccountDimTaskletAfterUpdateStep">
+			<batch:tasklet ref="analyzeAccountDimTasklet" />
+		</batch:step>		
+		
+	</batch:job>
+</beans>	

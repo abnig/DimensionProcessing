@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch 
+		http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/task
+        http://www.springframework.org/schema/task/spring-task.xsd        
+        http://www.springframework.org/schema/jdbc 
+        http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+        http://www.springframework.org/schema/util 
+        http://www.springframework.org/schema/util/spring-util.xsd">
+	<context:annotation-config />
+	<context:component-scan base-package="com.poc" />
+	<context:property-placeholder location="classpath:config/splitter.properties" />
+	<context:property-placeholder
+		location="classpath:config/splitter-jdbc.properties" />
+
+	<util:constant id="ascOrder"
+		static-field="org.springframework.batch.item.database.Order.ASCENDING" />
+
+	<util:map id="employeeInputDataSortKeysMap">
+		<entry key="id" value-ref="ascOrder" />
+		<entry key="firstName" value-ref="ascOrder" />
+	</util:map>
+
+	<bean id="employeeInputDataDBItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader"
+		scope="step">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="queryProvider">
+			<bean id="agreementTypeQueryProvider"
+				class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+				<property name="dataSource" ref="mysqlDataSource" />
+				<property name="selectClause">
+					<value><![CDATA[
+							SELECT id, firstName, lastName, department, salary, address
+						]]>
+					</value>
+				</property>
+				<property name="fromClause" value="FROM EmployeeInputData" />
+				<property name="databaseType" value="mysql" />
+				<property name="sortKeys" ref="employeeInputDataSortKeysMap" />
+			</bean>
+		</property>
+		<property name="pageSize" value="100000" />
+		<property name="rowMapper" ref="employeeInputDataRowMapper" />
+		<property name="saveState" value="false" />
+	</bean>
+
+	<bean id="departmentJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[        
+					INSERT INTO Department (deptId, department)
+					VALUES(:departmentId, :department);
+            ]]>
+			</value>
+		</property>
+
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+
+	<bean id="employeeJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[        
+					INSERT INTO Employee (empId, firstName, lastName, deptId)
+					VALUES (:empId, :firstName, :lastName, :deptId);
+            ]]>
+			</value>
+		</property>
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+
+	<bean id="employeeAddressJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[        
+					INSERT INTO EmployeeAddress(empAddId, empId, address)
+					VALUES(:empAddressId, :empId, :address);
+            ]]>
+			</value>
+		</property>
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+
+	<bean id="employeeSalaryJdbcItemWriter"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="sql">
+			<value>
+            <![CDATA[        
+					INSERT INTO EmployeeSalary(empSalId, empId, salary)
+					VALUES(:empSalaryId, :empId, :salary);
+            ]]>
+			</value>
+		</property>
+		<!-- It will take care matching between object property and sql name parameter -->
+		<property name="itemSqlParameterSourceProvider">
+			<bean
+				class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+		</property>
+	</bean>
+
+	<bean id="departmentFlatFileItemWriter" class="org.springframework.batch.item.file.FlatFileItemWriter"
+		scope="step">
+		<!-- write to this csv file -->
+		<property name="resource"
+			value="file:/Users/abnig19/Splitter-Project-Data-Files/Department.dat" />
+		<property name="shouldDeleteIfExists" value="true" />
+		<property name="lineAggregator">
+			<bean
+				class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+				<property name="delimiter" value="~" />
+				<property name="fieldExtractor">
+					<bean
+						class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+						<property name="names">
+							<value>
+								<![CDATA[
+									departmentId, department
+								]]>
+							</value>
+						</property>
+					</bean>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="employeeFlatFileItemWriter" class="org.springframework.batch.item.file.FlatFileItemWriter"
+		scope="step">
+		<property name="resource"
+			value="file:/Users/abnig19/Splitter-Project-Data-Files/Employee.dat" />
+		<property name="shouldDeleteIfExists" value="true" />
+		<property name="lineAggregator">
+			<bean
+				class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+				<property name="delimiter" value="~" />
+				<property name="fieldExtractor">
+					<bean
+						class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+						<property name="names">
+							<value>
+								<![CDATA[
+									empId, firstName, lastName, deptId
+								]]>
+							</value>
+						</property>
+					</bean>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="employeeAddressFlatFileItemWriter" class="org.springframework.batch.item.file.FlatFileItemWriter"
+		scope="step">
+		<property name="resource"
+			value="file:/Users/abnig19/Splitter-Project-Data-Files/EmployeeAddress.dat" />
+		<property name="shouldDeleteIfExists" value="true" />
+		<property name="lineAggregator">
+			<bean
+				class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+				<property name="delimiter" value="~" />
+				<property name="fieldExtractor">
+					<bean
+						class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+						<property name="names">
+							<value>
+								<![CDATA[
+									empAddressId, empId, address
+								]]>
+							</value>
+						</property>
+					</bean>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="employeeSalaryFlatFileItemWriter" class="org.springframework.batch.item.file.FlatFileItemWriter"
+		scope="step">
+		<property name="resource"
+			value="file:/Users/abnig19/Splitter-Project-Data-Files/EmployeeSalary.dat" />
+		<property name="shouldDeleteIfExists" value="true" />
+		<property name="lineAggregator">
+			<bean
+				class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+				<property name="delimiter" value="~" />
+				<property name="fieldExtractor">
+					<bean
+						class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+						<property name="names">
+							<value>
+								<![CDATA[
+									empSalaryId, empId, salary
+								]]>
+							</value>
+						</property>
+					</bean>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="mysqlDataSource" />
+	</bean>
+
+	<bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.JobRepositoryFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="databaseType" value="mySQL" />
+	</bean>
+
+	<bean id="connectionProperties"
+		class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="properties">
+			<props>
+				<prop key="serverTimezone">EST</prop>
+				<prop key="verifyServerCertificate">false</prop>
+				<prop key="useSSL">false</prop>
+			</props>
+		</property>
+	</bean>
+
+	<bean id="mysqlDataSource"
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url" value="jdbc:mysql://localhost:3306/dim" />
+		<property name="username" value="root" />
+		<property name="password" value="root1234" />
+		<property name="connectionProperties" ref="connectionProperties" />
+	</bean>
+
+	<bean id="agreementTypeDBItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="fetchSize" value="2500" />
+		<property name="queryProvider" ref="agreementTypeQueryProvider" />
+		<property name="pageSize" value="2500" />
+		<property name="rowMapper" ref="commonRowMapper" />
+	</bean>
+
+	<util:map id="myMap" key-type="java.lang.String"
+		value-type="org.springframework.batch.item.database.Order" map-class="java.util.LinkedHashMap">
+		<entry key="districtName" value="ASCENDING" />
+		<entry key="divisionName" value="ASCENDING" />
+		<entry key="officeName" value="ASCENDING" />
+		<entry key="officeType" value="ASCENDING" />
+		<entry key="pinCode" value="ASCENDING" />
+	</util:map>
+
+	<bean id="agreementTypeQueryProvider"
+		class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+		<property name="dataSource" ref="mysqlDataSource" />
+		<property name="selectClause">
+			<value><![CDATA[
+SELECT T_INDIA_PIN_CODE.pinCodeId,
+    T_INDIA_PIN_CODE.createdTS,
+    T_INDIA_PIN_CODE.updatedTS,
+    T_INDIA_PIN_CODE.circleName,
+    T_INDIA_PIN_CODE.deliveryStatus,
+    T_INDIA_PIN_CODE.districtName,
+    T_INDIA_PIN_CODE.divisionName,
+    T_INDIA_PIN_CODE.officeName,
+    T_INDIA_PIN_CODE.officeType,
+    T_INDIA_PIN_CODE.pinCode,
+    T_INDIA_PIN_CODE.regionName,
+    T_INDIA_PIN_CODE.relatedHeadOffice,
+    T_INDIA_PIN_CODE.relatedSubOffice,
+    T_INDIA_PIN_CODE.stateName,
+    T_INDIA_PIN_CODE.taluk,
+    T_INDIA_PIN_CODE.telephone
+
+
+						]]>
+			</value>
+		</property>
+		<property name="fromClause">
+			<value><![CDATA[
+						FROM ecom.T_INDIA_PIN_CODE
+					]]>
+			</value>
+		</property>
+		<!-- <property name="whereClause"> <value><![CDATA[ WHERE T2.doc_id_doc_id 
+			= T1.doc_id_doc_id AND LOWER(TRIM(T2.bnym_lob_nm)) IN ('securities lending', 
+			'pershing', 'corporate treasury', 'secured loan') ]]> </value> </property> -->
+		<property name="databaseType" value="mysql" />
+		<property name="sortKeys" ref="myMap" />
+	</bean>
+
+	<bean id="commonRowMapper" class="com.poc.rowmapper.inbound.CommonRowMapper" />
+	<bean id="mysqlPagingQueryProvider"
+		class="org.springframework.batch.item.database.support.MySqlPagingQueryProvider" />
+
+</beans>	
