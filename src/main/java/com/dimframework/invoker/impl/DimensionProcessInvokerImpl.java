@@ -42,8 +42,8 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 	private BlockingQueue<HashFileMetadata>	hashFileMetadataBlockingQueue;
 
 	@Override
-	public void invoker(String domainName, Date effectiveEndDate ){
-		List<DimensionMetadata> list = this.dimensionMetadataDaoServiceImpl.getByDomainName(domainName, effectiveEndDate);
+	public void invoker(String domainName, Date effectiveStartDate, Date effectiveEndDate ){
+		List<DimensionMetadata> list = this.dimensionMetadataDaoServiceImpl.getByDomainName(domainName, effectiveStartDate, effectiveEndDate);
 		this.pushToDimensionMetadataBlockingQueue(list);
 		this.callPerformDimensionProcessing(list, domainName);
 		this.callProcessHashFile(list, domainName);

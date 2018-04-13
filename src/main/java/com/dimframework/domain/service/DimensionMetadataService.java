@@ -12,7 +12,7 @@ import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
 
 public interface DimensionMetadataService {
 
-	List<DimensionMetadata> getByDomainName(String domainName, Date effectiveEndDate);
+	List<DimensionMetadata> getByDomainName(String domainName, Date effectiveStartDate, Date effectiveEndDate);
 
 	void truncateTable(String tableName);
 

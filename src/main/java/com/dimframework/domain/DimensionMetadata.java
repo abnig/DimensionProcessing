@@ -26,6 +26,7 @@ public class DimensionMetadata implements Serializable {
 	private final String activeFlag;
 	private final String primaryKeyHashColumn;
 	private final String dataFieldsHashColumn;
+	private final Date effectiveStartDate;
 	private final Date effectiveEndDate;
 	private final String fieldDelimiter;
 	private final String recordTerminator;
@@ -46,13 +47,15 @@ public class DimensionMetadata implements Serializable {
 		this.activeFlag = dimensionMetadata.getActiveFlag();
 		this.primaryKeyHashColumn = dimensionMetadata.getPrimaryKeyHashColumn();
 		this.dataFieldsHashColumn = dimensionMetadata.getDataFieldsHashColumn();
+		this.effectiveStartDate = dimensionMetadata.getEffectiveStartDate();
 		this.effectiveEndDate = dimensionMetadata.getEffectiveEndDate();
 		this.fieldDelimiter = dimensionMetadata.getFieldDelimiter();
 		this.recordTerminator= dimensionMetadata.getRecordTerminator();
 		this.hashDataFilesBasePath = dimensionMetadata.getHashDataFilesBasePath();
+		
 	}
 	
-	public DimensionMetadata(DimensionMetadata dimensionMetadata, Date effectiveEndDate, String fieldDelimiter, 
+	public DimensionMetadata(DimensionMetadata dimensionMetadata, Date effectiveStartDate, Date effectiveEndDate, String fieldDelimiter, 
 			String recordTerminator, String hashDataFilesBasePath){
 		this.metadataId = dimensionMetadata.getMetadataId();
 		this.sourceTable = dimensionMetadata.getSourceTable();
@@ -68,6 +71,7 @@ public class DimensionMetadata implements Serializable {
 		this.activeFlag = dimensionMetadata.getActiveFlag();
 		this.primaryKeyHashColumn = dimensionMetadata.getPrimaryKeyHashColumn();
 		this.dataFieldsHashColumn = dimensionMetadata.getDataFieldsHashColumn();
+		this.effectiveStartDate = effectiveStartDate;
 		this.effectiveEndDate = effectiveEndDate;
 		this.fieldDelimiter =fieldDelimiter;
 		this.recordTerminator= recordTerminator;
@@ -77,7 +81,7 @@ public class DimensionMetadata implements Serializable {
 
 	public DimensionMetadata(Integer metadataId, String sourceTable, String sourceTableHash, String dimTable,
 			Integer commitInterval, String sourceTablePKColumns, String sourceTableDataColumns, String domainName,
-			Integer concurrencyLimit, String dataSourceBeanName, String dataSelectionStrategy, String activeFlag, String primaryKeyHashColumn, String dataFieldsHashColumn, Date effectiveEndDate, String fieldDelimiter, 
+			Integer concurrencyLimit, String dataSourceBeanName, String dataSelectionStrategy, String activeFlag, String primaryKeyHashColumn, String dataFieldsHashColumn, Date effectiveStartDate, Date effectiveEndDate, String fieldDelimiter, 
 			String recordTerminator, String hashDataFilesBasePath) {
 		super();
 		this.metadataId = metadataId;
@@ -94,6 +98,7 @@ public class DimensionMetadata implements Serializable {
 		this.activeFlag = activeFlag;
 		this.primaryKeyHashColumn = primaryKeyHashColumn;
 		this.dataFieldsHashColumn = dataFieldsHashColumn;
+		this.effectiveStartDate = effectiveStartDate;
 		this.effectiveEndDate = effectiveEndDate;
 		this.fieldDelimiter = fieldDelimiter;
 		this.recordTerminator= recordTerminator;
@@ -170,6 +175,10 @@ public class DimensionMetadata implements Serializable {
 
 	public String getHashDataFilesBasePath() {
 		return hashDataFilesBasePath;
+	}
+	
+	public Date getEffectiveStartDate() {
+		return effectiveStartDate;
 	}
 
 	@Override

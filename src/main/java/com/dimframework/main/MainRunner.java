@@ -14,7 +14,7 @@ public class MainRunner {
 	public static void main(String[] args) {
 		ApplicationContext ctx = new AnnotationConfigApplicationContext(BeanConfig.class);
 		DimensionProcessInvoker helloWorld = ctx.getBean(DimensionProcessInvokerImpl.class);
-		helloWorld.invoker("D1", new Date(new Date().getTime()-2000000L));
+		helloWorld.invoker("D1", new Date(new Date().getTime()+2000000L), new Date(new Date().getTime()-2000000L));
 
 	}
 

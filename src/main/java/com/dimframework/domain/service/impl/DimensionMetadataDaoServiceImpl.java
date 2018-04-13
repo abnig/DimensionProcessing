@@ -46,10 +46,10 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 	private String schemaName;
 
 	@Override
-	public List<DimensionMetadata> getByDomainName(String domainName, Date effectiveEndDate) {
+	public List<DimensionMetadata> getByDomainName(String domainName, Date effectiveStartDate, Date effectiveEndDate) {
 		Optional<List<DimensionMetadata>> list = this.dimensionMetadataDaoImpl.getByDomainName(domainName);
 		List<DimensionMetadata> list2 = new ArrayList<DimensionMetadata>();
-		list.ifPresent(dimensionMetadataList -> dimensionMetadataList.forEach(c -> list2.add(new DimensionMetadata(c, effectiveEndDate, fieldDelimiter,  recordTerminator, hashDataFilesBasePath))));
+		list.ifPresent(dimensionMetadataList -> dimensionMetadataList.forEach(c -> list2.add(new DimensionMetadata(c, effectiveStartDate, effectiveEndDate, fieldDelimiter,  recordTerminator, hashDataFilesBasePath))));
 		return list2;
 	}
 

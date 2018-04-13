@@ -4,6 +4,6 @@ import java.util.Date;
 
 public interface DimensionProcessInvoker {
 	
-	public void invoker(String domainName, Date effectiveEndDate);
+	public void invoker(String domainName, Date effectiveStartDate, Date effectiveEndDate);
 	
 }

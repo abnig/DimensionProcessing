@@ -17,7 +17,7 @@ public class DimensionMetadataRowMapper implements RowMapper<DimensionMetadata> 
 				rs.getString("sourceTableDataColumns"), rs.getString("domainName"), rs.getInt("concurrencyLimit"),
 				rs.getString("dataSourceBeanName"), rs.getString("dataSelectionStrategy"), rs.getString("activeFlag"),
 				rs.getString("primaryKeyHashColumn"),
-				rs.getString("dataFieldsHashColumn"), null, null, null, null); 
+				rs.getString("dataFieldsHashColumn"), null, null, null, null, null); 
 		// for effective end date which comes as job param);
 		return dimensionMetadata;
 	}
