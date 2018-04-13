@@ -86,7 +86,7 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		logger.debug("Created bean name = " + beanName + " for  " + populateHashBatchJobMetadata.toString());
 		Job job = this.beanRegistryServiceImpl.instantiatePopulateHashJob(beanName);
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
-		jobParametersBuilder.addString("runid", new Date().toGMTString());
+		jobParametersBuilder.addLong("runid", new Date().getTime());
 		this.beanRegistryServiceImpl.run(job, jobParametersBuilder.toJobParameters());
 		HashFileMetadata hashFileMetaData = new HashFileMetadata(dimensionMetadata, populateHashBatchJobMetadata.getFullyQualifiedFileName(), schemaName, dimensionProcessLog.getProcessId());
 		hashFileMetadataBlockingQueue.offer(hashFileMetaData);
@@ -117,13 +117,17 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		
 		// create InsertOperationMetadata object
 		InsertOperationMetadata insertOperationMetadata = this.insertOperationServiceImpl.generateInsertOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
+		this.insertOperationMetadataBlockingQueue.offer(insertOperationMetadata);
 	}
 
 	@Override
 	public void processInsertOperation() throws InterruptedException, JobExecutionAlreadyRunningException,
 			JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException {
 		InsertOperationMetadata insertOperationMetadata = insertOperationMetadataBlockingQueue.take();
-		
+		Job insertJob = insertOperationServiceImpl.instantiateInsertOperationBatchJob(insertOperationMetadata);
+		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
+		jobParametersBuilder.addDate("effectiveStartDate", insertOperationMetadata.getDimensionMetadata().getEffectiveStartDate());
+		this.beanRegistryServiceImpl.run(insertJob, jobParametersBuilder.toJobParameters());
 	}
 	
 	

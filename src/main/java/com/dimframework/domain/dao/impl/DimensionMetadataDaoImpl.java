@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.HashFileMetadata;
+import com.dimframework.domain.InsertOperationMetadata;
 import com.dimframework.domain.dao.DimensionMetadataDao;
 import com.dimframework.rowmapper.DimensionMetadataRowMapper;
 
@@ -64,5 +65,12 @@ HASH_PK,
 HASH_COL);
 
 	 */
+
+	@Override
+	public void executeLoadIntoDimensionTable(InsertOperationMetadata insertOperationMetadata) {
+		logger.info("SQL Command to load into " + insertOperationMetadata.getDimensionMetadata().getDimTable() + " table is: " + insertOperationMetadata.getInsertSQL());
+		this.namedJdbcMySQLTemplate.getJdbcOperations().execute(insertOperationMetadata.getInsertSQL());
+		
+	}
 
 }

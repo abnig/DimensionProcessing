@@ -16,6 +16,7 @@ import com.dimframework.domain.DeleteOperationMetadata;
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.DimensionProcessLog;
 import com.dimframework.domain.HashFileMetadata;
+import com.dimframework.domain.InsertOperationMetadata;
 import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.domain.dao.DimensionMetadataDao;
 import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
@@ -88,7 +89,7 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 		HASH_PK,
 		HASH_COL);
 	*/
-		String fileName = new StringBuilder(processId.toString()).append(dimensionMetadata.getDimTable()).append("_insert").toString();
+		String fileName = new StringBuilder(dimensionMetadata.getHashDataFilesBasePath()).append(processId.toString()).append(dimensionMetadata.getDimTable()).append("_update").toString();
 		StringBuilder sql = new StringBuilder("LOAD DATA LOCAL INFILE '").append(fileName).append("'");
 		sql.append(" INTO TABLE ").append(schemaName).append(".").append(dimensionMetadata.getSourceTableHash());
 		sql.append(" FIELDS TERMINATED BY '").append(dimensionMetadata.getFieldDelimiter()).append("'"); 
@@ -218,6 +219,11 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 	@Override
 	public void executeLoadIntoHash(HashFileMetadata hashFileMetadata) {
 		this.dimensionMetadataDaoImpl.executeLoadIntoHash(hashFileMetadata);
+	}
+
+	@Override
+	public void executeLoadIntoDimensionTable(InsertOperationMetadata insertOperationMetadata) {
+		this.dimensionMetadataDaoImpl.executeLoadIntoDimensionTable(insertOperationMetadata);
 	}
 
 }

@@ -20,6 +20,7 @@ import com.dimframework.invoker.DimensionProcessInvoker;
 import com.dimframework.workerthread.DeleteOperationMetadataConsumerWorker;
 import com.dimframework.workerthread.DimensionMetadataConsumerWorker;
 import com.dimframework.workerthread.HashFileMetadataConsumerWorker;
+import com.dimframework.workerthread.InsertOperationMetadataConsumerWorker;
 
 @Service("dimensionProcessInvokerImpl")
 public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
@@ -48,6 +49,7 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 		this.callPerformDimensionProcessing(list, domainName);
 		this.callProcessHashFile(list, domainName);
 		this.callPerformDeleteOperation(list, domainName);
+		this.callPerformInsertOperation(list, domainName);
 	}
 
 	private void pushToDimensionMetadataBlockingQueue(List<DimensionMetadata> list) {
@@ -78,6 +80,15 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 		for (int i = 0; i < list.size(); i++) {
 			DeleteOperationMetadataConsumerWorker workerThread = (DeleteOperationMetadataConsumerWorker) this.applicationContext
 					.getBean("deleteOperationMetadataConsumerWorker", countDownLatch);
+			this.dimensionProcessingExecutorService.execute(workerThread);
+		}
+	}
+	
+	private void callPerformInsertOperation(List<DimensionMetadata> list, String domainName) {
+		CountDownLatch countDownLatch = (CountDownLatch) this.applicationContext.getBean("countDownLatch", list.size());
+		for (int i = 0; i < list.size(); i++) {
+			InsertOperationMetadataConsumerWorker workerThread = (InsertOperationMetadataConsumerWorker) this.applicationContext
+					.getBean("insertOperationMetadataConsumerWorker", countDownLatch);
 			this.dimensionProcessingExecutorService.execute(workerThread);
 		}
 	}
