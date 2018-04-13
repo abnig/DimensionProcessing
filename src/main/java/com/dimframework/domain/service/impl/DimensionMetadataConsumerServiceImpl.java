@@ -25,6 +25,7 @@ import com.dimframework.domain.DeleteOperationMetadata;
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.DimensionProcessLog;
 import com.dimframework.domain.HashFileMetadata;
+import com.dimframework.domain.InsertOperationMetadata;
 import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.domain.enums.EDWReplicationStatus;
 import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
@@ -33,6 +34,7 @@ import com.dimframework.domain.service.DeleteOperationService;
 import com.dimframework.domain.service.DimensionMetadataConsumerService;
 import com.dimframework.domain.service.DimensionMetadataService;
 import com.dimframework.domain.service.DimensionProcessLogDaoService;
+import com.dimframework.domain.service.InsertOperationService;
 
 @Component("dimensionMetadataConsumerServiceImpl")
 public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataConsumerService {
@@ -47,6 +49,9 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 	
 	@Resource
 	private BlockingQueue<DeleteOperationMetadata> deleteOperationMetadataBlockingQueue;
+	
+	@Resource
+	private BlockingQueue<InsertOperationMetadata> insertOperationMetadataBlockingQueue;
 
 	@Autowired
 	private DimensionMetadataService dimensionMetadataDaoServiceImpl;
@@ -56,6 +61,9 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 	
 	@Autowired
 	private DeleteOperationService deleteOperationServiceImpl;
+	
+	@Autowired
+	private InsertOperationService insertOperationServiceImpl;
 	
 	@Autowired
 	private BeanRegistryService beanRegistryServiceImpl;
@@ -106,6 +114,16 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		jobParametersBuilder.addDate("effectiveEndDate", deleteOperationMetadata.getDimensionMetadata().getEffectiveEndDate());
 		this.beanRegistryServiceImpl.run(deleteJob, jobParametersBuilder.toJobParameters());
 		UpdateOperationMetadata u = dimensionMetadataDaoServiceImpl.generateUpdateOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
+		
+		// create InsertOperationMetadata object
+		InsertOperationMetadata insertOperationMetadata = this.insertOperationServiceImpl.generateInsertOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
+	}
+
+	@Override
+	public void processInsertOperation() throws InterruptedException, JobExecutionAlreadyRunningException,
+			JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException {
+		InsertOperationMetadata insertOperationMetadata = insertOperationMetadataBlockingQueue.take();
+		
 	}
 	
 	

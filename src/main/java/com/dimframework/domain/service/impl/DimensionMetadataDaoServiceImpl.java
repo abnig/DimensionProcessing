@@ -61,8 +61,46 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 	@Override
 	public UpdateOperationMetadata generateUpdateOperationBatchJobMetadata(DimensionMetadata dimensionMetadata,
 			Long processId) {
-		// TODO Auto-generated method stub
-		return null;
+		/*
+		SELECT NH.*
+FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH 
+		NH ON DH.HASH_PK = NH.HASH_PK AND DH.IS_ACTV_FL = 'Y'
+        WHERE DH.HASH_COL <> NH.HASH_COL;
+        
+		 */
+		StringBuilder selectSQL = new StringBuilder(" SELECT DH.").append(dimensionMetadata.getSourceTablePKColumns()).append(" , ").append(dimensionMetadata.getSourceTableDataColumns());
+		selectSQL.append(" FROM " ).append(schemaName).append(".").append(dimensionMetadata.getDimTable()).append(" DH ");
+		selectSQL.append(" RIGHT OUTER JOIN ").append(dimensionMetadata.getSourceTableHash()).append(" NH ON ");
+		selectSQL.append(" DH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" = ").append(" NH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" AND ");
+		selectSQL.append(" DH.ISACTV_FL = 'Y' WHERE ").append(" DH.").append(dimensionMetadata.getDataFieldsHashColumn()).append(" <> ").append(" NH.").append(dimensionMetadata.getDataFieldsHashColumn()).append(";");
+		
+		//         UPDATE dim.employee_dim DH SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effEndDate WHERE DH.HASH_PK IN (:colHashPK);
+		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
+		updateSQL.append(" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK; ");
+		
+		/*
+		LOAD DATA LOCAL INFILE '/dimension-processing/hash-datafiles/test.dat' INTO TABLE dim.employee_hash 
+		FIELDS TERMINATED BY '|'
+		LINES TERMINATED BY '~'
+		(emp_ID,
+		name,
+		salary,
+		HASH_PK,
+		HASH_COL);
+	*/
+		String fileName = new StringBuilder(processId.toString()).append(dimensionMetadata.getDimTable()).append("_insert").toString();
+		StringBuilder sql = new StringBuilder("LOAD DATA LOCAL INFILE '").append(fileName).append("'");
+		sql.append(" INTO TABLE ").append(schemaName).append(".").append(dimensionMetadata.getSourceTableHash());
+		sql.append(" FIELDS TERMINATED BY '").append(dimensionMetadata.getFieldDelimiter()).append("'"); 
+		sql.append(" LINES TERMINATED BY '").append(dimensionMetadata.getRecordTerminator()).append("' (");
+		sql.append(dimensionMetadata.getSourceTablePKColumns()).append(", ");
+		sql.append(dimensionMetadata.getSourceTableDataColumns()).append(", ");
+		sql.append(dimensionMetadata.getPrimaryKeyHashColumn()).append(", ");
+		sql.append(dimensionMetadata.getDataFieldsHashColumn()).append(");");
+		String loadSQLString = sql.toString();
+		logger.info("SQL Command to load into " + dimensionMetadata.getSourceTableHash() + " table is: " + loadSQLString);
+		UpdateOperationMetadata updateOperationMetadata = new UpdateOperationMetadata(dimensionMetadata, schemaName, processId, fileName, selectSQL.toString(), updateSQL.toString(), loadSQLString);
+		return updateOperationMetadata;
 	}
 
 	@Override
@@ -75,9 +113,9 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 		selectSQL.append(" WHERE DH.IS_ACTV_FL = 'Y' AND NH.HASH_PK IS NULL; ");
 		
 		//         UPDATE dim.employee_dim DH SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effEndDate WHERE DH.HASH_PK IN (:colHashPK);
-		StringBuilder insertSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
-		insertSQL.append(" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK; ");
-		DeleteOperationMetadata p = new DeleteOperationMetadata(dimensionMetadata, schemaName, processId, selectSQL.toString(), insertSQL.toString());
+		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
+		updateSQL.append(" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK; ");
+		DeleteOperationMetadata p = new DeleteOperationMetadata(dimensionMetadata, schemaName, processId, selectSQL.toString(), updateSQL.toString());
 		return p;
 	}
 

@@ -16,5 +16,7 @@ public interface DimensionMetadataConsumerService {
 	void processHashFileMetadata() throws InterruptedException, IOException;
 	
 	void processDeleteOperation() throws InterruptedException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException;
+	
+	void processInsertOperation() throws InterruptedException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException;
 
 }

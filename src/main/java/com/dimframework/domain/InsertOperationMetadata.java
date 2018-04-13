@@ -2,19 +2,18 @@ package com.dimframework.domain;
 
 import java.io.Serializable;
 
-public class UpdateOperationMetadata implements Serializable {
+public class InsertOperationMetadata implements Serializable {
 	
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 3434158548040307022L;
 
-	public UpdateOperationMetadata(DimensionMetadata dimensionMetadata, String schemaName, Long processId, String fileName,
-			String selectSQL, String updateSQL, String insertSQL) {
+	public InsertOperationMetadata(DimensionMetadata dimensionMetadata, String schemaName, Long processId, String fileName,
+			String selectSQL, String insertSQL) {
 		this.schemaName = schemaName;
 		this.processId = processId;
 		this.selectSQL = selectSQL;
-		this.updateSQL = updateSQL;
 		this.insertSQL = insertSQL;
 		this.dimensionMetadata = dimensionMetadata;
 		this.fileName = fileName;
@@ -24,7 +23,6 @@ public class UpdateOperationMetadata implements Serializable {
 	private final String schemaName;
 	private final Long processId;
 	private final String selectSQL;
-	private final String updateSQL;
 	private final String insertSQL;
 	private final DimensionMetadata dimensionMetadata;
 
@@ -38,10 +36,6 @@ public class UpdateOperationMetadata implements Serializable {
 
 	public String getSelectSQL() {
 		return selectSQL;
-	}
-
-	public String getUpdateSQL() {
-		return updateSQL;
 	}
 
 	public DimensionMetadata getDimensionMetadata() {
