@@ -20,8 +20,8 @@ import org.springframework.stereotype.Component;
 import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.domain.service.UpdateOperationService;
 
-@Component("updateoperationServiceImpl")
-public class UpdateoperationServiceImpl implements UpdateOperationService, InitializingBean {
+@Component("updateOperationServiceImpl")
+public class UpdateOperationServiceImpl implements UpdateOperationService, InitializingBean {
 	
 	@Autowired
 	private ApplicationContext applicationContext;
