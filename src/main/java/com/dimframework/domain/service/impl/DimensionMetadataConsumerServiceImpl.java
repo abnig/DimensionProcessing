@@ -74,7 +74,6 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		DimensionProcessLog dimensionProcessLog = this.DimensionProcessLogDaoServiceImpl.create(runLog);
 		logger.info("Created runID " +  dimensionProcessLog.getProcessId() + " for metadataId: " + dimensionProcessLog.getMetadataId());
 		this.dimensionMetadataDaoServiceImpl.truncateTable(dimensionMetadata.getSourceTableHash());
-		logger.info("After truncating table " + dimensionMetadata.getSourceTableHash());
 		PopulateHashBatchJobMetadata populateHashBatchJobMetadata = this.dimensionMetadataDaoServiceImpl.generatePopulateHashBatchJobMetadata(dimensionMetadata, dimensionProcessLog);
 		String beanName = this.beanRegistryServiceImpl.getPrototypePopulateHashBatchJobMetadata(populateHashBatchJobMetadata);
 		
