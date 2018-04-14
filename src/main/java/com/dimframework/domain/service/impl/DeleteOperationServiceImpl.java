@@ -72,7 +72,7 @@ public class DeleteOperationServiceImpl implements DeleteOperationService, Initi
 
 	@Override
 	public Job instantiateDeleteOperationBatchJob(DeleteOperationMetadata o) {
-		String name = "DimensionProcessing_SourceTable_" + o.getDimensionMetadata().getSourceTable();
+		String name = "DeleteOperation_" + o.getDimensionMetadata().getSourceTable() + "_Job_" + o.getProcessId();
 		try {
 			return jobBuilderFactory.get(name).repository(jobRepository.getObject()).incrementer(new RunIdIncrementer())
 					.flow(createDeleteOperationStep(o)).end().build();
@@ -148,7 +148,7 @@ public class DeleteOperationServiceImpl implements DeleteOperationService, Initi
 	}
 	
 	private Step createDeleteOperationStep(DeleteOperationMetadata o) throws BeansException, Exception {
-		String name = "DimensionProcessing_SourceTable_" + o.getDimensionMetadata().getSourceTable() + "_Step";
+		String name = "DeleteOperation_" + o.getDimensionMetadata().getSourceTable() + "_Step_" + o.getProcessId();
 		@SuppressWarnings("unchecked")
 		TaskletStep step = stepBuilderFactory.get(name).<String, String>chunk(o.getDimensionMetadata().getCommitInterval())
 				.reader((ItemReader<? extends String>) applicationContext.getBean( createDeleteOperationJdbcCursorItemReader(o)))

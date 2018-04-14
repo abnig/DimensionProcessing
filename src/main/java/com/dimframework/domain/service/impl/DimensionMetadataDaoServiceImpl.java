@@ -91,7 +91,7 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 	*/
 		String fileName = new StringBuilder(dimensionMetadata.getHashDataFilesBasePath()).append(processId.toString()).append(dimensionMetadata.getDimTable()).append("_update").toString();
 		StringBuilder sql = new StringBuilder("LOAD DATA LOCAL INFILE '").append(fileName).append("'");
-		sql.append(" INTO TABLE ").append(schemaName).append(".").append(dimensionMetadata.getSourceTableHash());
+		sql.append(" INTO TABLE ").append(schemaName).append(".").append(dimensionMetadata.getDimTable());
 		sql.append(" FIELDS TERMINATED BY '").append(dimensionMetadata.getFieldDelimiter()).append("'"); 
 		sql.append(" LINES TERMINATED BY '").append(dimensionMetadata.getRecordTerminator()).append("' (");
 		sql.append(dimensionMetadata.getSourceTablePKColumns()).append(", ");

@@ -292,7 +292,7 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 		
 		if(applicationContext.containsBeanDefinition(populateHashBatchJobMetadataBeanName))
 		{
-			logger.info("Bean with name " + populateHashBatchJobMetadataBeanName + " found successfully.");
+			logger.debug("Bean with name " + populateHashBatchJobMetadataBeanName + " found successfully.");
 			o = applicationContext.getBean(populateHashBatchJobMetadataBeanName, PopulateHashBatchJobMetadata.class);
 		}
 		else
@@ -301,7 +301,7 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 			System.exit(1);
 		}
 		
-		String name = "DimensionProcessing_SourceTable_" + o.getDimensionMetadata().getSourceTable();
+		String name = "LoadHash_" + o.getDimensionMetadata().getSourceTable() + "_Job_" + o.getDimensionProcessLog().getProcessId();
 		try {
 			return jobBuilderFactory.get(name).repository(jobRepository.getObject()).incrementer(new RunIdIncrementer())
 					.flow(createStep(o)).end().build();
@@ -311,7 +311,7 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 	}
 
 	private Step createStep(PopulateHashBatchJobMetadata o) {
-		String name = "DimensionProcessing_SourceTable_" + o.getDimensionMetadata().getSourceTable() + "_Step";
+		String name = "LoadHash_" + o.getDimensionMetadata().getSourceTable() + "_Step_" + o.getDimensionProcessLog().getProcessId();
 		@SuppressWarnings("unchecked")
 		TaskletStep step = stepBuilderFactory.get(name).<String, String>chunk(o.getDimensionMetadata().getCommitInterval())
 				.reader((ItemReader<? extends String>) applicationContext.getBean(instantiateJdbcCursorItemReader(o)))
@@ -351,7 +351,7 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 		bdb.addPropertyValue("name", name);
 		beanDefinitionRegistry.registerBeanDefinition(name, bdb.getBeanDefinition());
 		this.addToMap(o.getDimensionMetadata().getMetadataId().longValue(), name);
-		logger.info("Created JdbcCursorItemReader bean successfully using " + o.toString());
+		logger.debug("Created JdbcCursorItemReader bean successfully using " + o.toString());
 		return name;
 	}
 

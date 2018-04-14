@@ -73,7 +73,7 @@ public abstract class AbstractInsertOperationMetadataService extends OperationMe
 		bdb.addPropertyValue("rowMapper", new CommonRowMapper(insertOperationMetadata.getDimensionMetadata().getFieldDelimiter(), insertOperationMetadata.getDimensionMetadata().getRecordTerminator()));
 
 		bdb.addPropertyValue("sql", insertOperationMetadata.getSelectSQL());
-		String name = insertOperationMetadata.getProcessId().toString().concat("_jdbcCursorItemReader");
+		String name = insertOperationMetadata.getProcessId().toString().concat("_InsertOperationJdbcCursorItemReader");
 		bdb.addPropertyValue("name", name);
 		beanDefinitionRegistry.registerBeanDefinition(name, bdb.getBeanDefinition());
 		this.addToMap(insertOperationMetadata.getProcessId(), name);
@@ -84,7 +84,7 @@ public abstract class AbstractInsertOperationMetadataService extends OperationMe
 		FlatFileItemWriter<String> flatFileItemWriter = new FlatFileItemWriter<String>();
 		BeanDefinitionBuilder bdb = BeanDefinitionBuilder.genericBeanDefinition(flatFileItemWriter.getClass());
 		Path out = Paths.get(insertOperationMetadata.getFileName());
-		String name = insertOperationMetadata.getProcessId().toString().concat("_flatFileItemWriter");
+		String name = insertOperationMetadata.getProcessId().toString().concat("_InsertOperationFlatFileItemWriter");
 		bdb.addPropertyValue("resource", new FileSystemResource(out.toFile()));
 		bdb.addPropertyValue("shouldDeleteIfEmpty", Boolean.TRUE);
 		bdb.addPropertyValue("encoding", "UTF-8");
@@ -98,7 +98,7 @@ public abstract class AbstractInsertOperationMetadataService extends OperationMe
 
 	final Step createInsertOperationStep(InsertOperationMetadata insertOperationMetadata)
 			throws BeansException, Exception {
-		String name = "DimProcess_SourceTable_" + insertOperationMetadata.getProcessId() + "_" 
+		String name = "InsertOperation_" + insertOperationMetadata.getProcessId() + "_" 
 				+ insertOperationMetadata.getDimensionMetadata().getSourceTable() + "_Step";
 		@SuppressWarnings("unchecked")
 		TaskletStep step = stepBuilderFactory.get(name)
@@ -112,7 +112,7 @@ public abstract class AbstractInsertOperationMetadataService extends OperationMe
 	}
 
 	final Step createLoadIntoDimensionStep(InsertOperationMetadata insertOperationMetadata) {
-		String name = "DimensionProcessing_SourceTable_" + insertOperationMetadata.getProcessId() + "_" 
+		String name = "LoadOperation_" + insertOperationMetadata.getProcessId() + "_" 
 				+ insertOperationMetadata.getDimensionMetadata().getSourceTable() + "_Step";
 		TaskletStep step = stepBuilderFactory.get(name).tasklet(new Tasklet() {
 			@Override

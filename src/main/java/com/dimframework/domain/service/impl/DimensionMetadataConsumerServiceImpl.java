@@ -113,21 +113,30 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
 		jobParametersBuilder.addDate("effectiveEndDate", deleteOperationMetadata.getDimensionMetadata().getEffectiveEndDate());
 		this.beanRegistryServiceImpl.run(deleteJob, jobParametersBuilder.toJobParameters());
-		UpdateOperationMetadata u = dimensionMetadataDaoServiceImpl.generateUpdateOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
+	//	UpdateOperationMetadata u = dimensionMetadataDaoServiceImpl.generateUpdateOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
 		
 		// create InsertOperationMetadata object
 		InsertOperationMetadata insertOperationMetadata = this.insertOperationServiceImpl.generateInsertOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
 		this.insertOperationMetadataBlockingQueue.offer(insertOperationMetadata);
 	}
-
+	
 	@Override
 	public void processInsertOperation() throws InterruptedException, JobExecutionAlreadyRunningException,
-			JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException {
+			JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException, IOException {
 		InsertOperationMetadata insertOperationMetadata = insertOperationMetadataBlockingQueue.take();
 		Job insertJob = insertOperationServiceImpl.instantiateInsertOperationBatchJob(insertOperationMetadata);
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
 		jobParametersBuilder.addDate("effectiveStartDate", insertOperationMetadata.getDimensionMetadata().getEffectiveStartDate());
 		this.beanRegistryServiceImpl.run(insertJob, jobParametersBuilder.toJobParameters());
+		// remove files
+		Path path = Paths.get(insertOperationMetadata.getFileName());
+		Files.delete(path);
+	}
+
+	@Override
+	public void processUpdateOperation() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 	

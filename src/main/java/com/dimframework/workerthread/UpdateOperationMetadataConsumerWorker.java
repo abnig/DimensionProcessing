@@ -1,6 +1,5 @@
 package com.dimframework.workerthread;
 
-import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.log4j.Logger;
@@ -15,34 +14,25 @@ import org.springframework.stereotype.Component;
 
 import com.dimframework.domain.service.DimensionMetadataConsumerService;
 
-@Component("insertOperationMetadataConsumerWorker")
+@Component("updateOperationMetadataConsumerWorker")
 @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-public class InsertOperationMetadataConsumerWorker implements Runnable {
+public class UpdateOperationMetadataConsumerWorker implements Runnable {
 
-	private static Logger logger = Logger.getLogger(InsertOperationMetadataConsumerWorker.class);
+	private static Logger logger = Logger.getLogger(UpdateOperationMetadataConsumerWorker.class);
 
 	@Autowired
 	private DimensionMetadataConsumerService dimensionMetadataConsumerServiceImpl;
 
 	private CountDownLatch countDownLatch;
 
-	public InsertOperationMetadataConsumerWorker(CountDownLatch countDownLatch) {
+	public UpdateOperationMetadataConsumerWorker(CountDownLatch countDownLatch) {
 		super();
 		this.countDownLatch = countDownLatch;
 	}
 
 	@Override
 	public void run() {
-		try {
-			this.dimensionMetadataConsumerServiceImpl.processInsertOperation();
-		} catch (InterruptedException | JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException | IOException e) {
-			if (e.getLocalizedMessage() == null) {
-				logger.info(Thread.currentThread().getName() + " terminating normally");
-			} else
-				logger.error(e.getLocalizedMessage());
-		} finally {
-			countDownLatch.countDown();
-		}
+
 
 	}
 
