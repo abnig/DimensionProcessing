@@ -98,8 +98,8 @@ public abstract class AbstractInsertOperationMetadataService extends OperationMe
 
 	final Step createInsertOperationStep(InsertOperationMetadata insertOperationMetadata)
 			throws BeansException, Exception {
-		String name = "InsertOperation_" + insertOperationMetadata.getProcessId() + "_" 
-				+ insertOperationMetadata.getDimensionMetadata().getSourceTable() + "_Step";
+		String name = "InsertOperation_"
+				+ insertOperationMetadata.getDimensionMetadata().getSourceTable() + "_Step" + insertOperationMetadata.getProcessId();
 		@SuppressWarnings("unchecked")
 		TaskletStep step = stepBuilderFactory.get(name)
 				.<String, String>chunk(insertOperationMetadata.getDimensionMetadata().getCommitInterval())
@@ -112,8 +112,8 @@ public abstract class AbstractInsertOperationMetadataService extends OperationMe
 	}
 
 	final Step createLoadIntoDimensionStep(InsertOperationMetadata insertOperationMetadata) {
-		String name = "LoadOperation_" + insertOperationMetadata.getProcessId() + "_" 
-				+ insertOperationMetadata.getDimensionMetadata().getSourceTable() + "_Step";
+		String name = "LoadOperation_"  
+				+ insertOperationMetadata.getDimensionMetadata().getSourceTable() + "_Step_" + insertOperationMetadata.getProcessId() ;
 		TaskletStep step = stepBuilderFactory.get(name).tasklet(new Tasklet() {
 			@Override
 			public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {

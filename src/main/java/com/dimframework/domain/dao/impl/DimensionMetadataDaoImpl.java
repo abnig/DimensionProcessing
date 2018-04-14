@@ -50,25 +50,13 @@ public class DimensionMetadataDaoImpl implements DimensionMetadataDao {
 		sql.append(hashFileMetadata.getDimensionMetadata().getPrimaryKeyHashColumn()).append(", ");
 		sql.append(hashFileMetadata.getDimensionMetadata().getDataFieldsHashColumn()).append(");");
 		String sqlString = sql.toString();
-		logger.info("SQL Command to load into " + hashFileMetadata.getDimensionMetadata().getSourceTableHash() + " table is: " + sqlString);
+		logger.debug("SQL Command to load into " + hashFileMetadata.getDimensionMetadata().getSourceTableHash() + " table is: " + sqlString);
 		this.namedJdbcMySQLTemplate.getJdbcOperations().execute(sqlString);
 	}
-	/*
-	 
-LOAD DATA LOCAL INFILE '/dimension-processing/hash-datafiles/test.dat' INTO TABLE dim.employee_hash 
-FIELDS TERMINATED BY '|'
-LINES TERMINATED BY '~'
-(emp_ID,
-name,
-salary,
-HASH_PK,
-HASH_COL);
-
-	 */
 
 	@Override
 	public void executeLoadIntoDimensionTable(InsertOperationMetadata insertOperationMetadata) {
-		logger.info("SQL Command to load into " + insertOperationMetadata.getDimensionMetadata().getDimTable() + " table is: " + insertOperationMetadata.getInsertSQL());
+		logger.debug("SQL Command to load into " + insertOperationMetadata.getDimensionMetadata().getDimTable() + " table is: " + insertOperationMetadata.getInsertSQL());
 		this.namedJdbcMySQLTemplate.getJdbcOperations().execute(insertOperationMetadata.getInsertSQL());
 		
 	}

@@ -97,7 +97,7 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 	public void processHashFileMetadata() throws InterruptedException, IOException {
 		HashFileMetadata hm = hashFileMetadataBlockingQueue.take();
 		this.dimensionMetadataDaoServiceImpl.executeLoadIntoHash(hm);
-		logger.info("Loaded data successfully in table " + hm.getDimensionMetadata().getSourceTableHash());
+		logger.debug("Loaded data successfully in table " + hm.getDimensionMetadata().getSourceTableHash());
 		// remove files
 		Path path = Paths.get(hm.getFileName());
 		Files.delete(path);
