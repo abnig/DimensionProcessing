@@ -100,7 +100,7 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		logger.debug("Loaded data successfully in table " + hm.getDimensionMetadata().getSourceTableHash());
 		// remove files
 		Path path = Paths.get(hm.getFileName());
-		Files.delete(path);
+	//	Files.delete(path);
 		DeleteOperationMetadata d = dimensionMetadataDaoServiceImpl.generateDeleteOperationBatchJobMetadata(hm.getDimensionMetadata(), hm.getProcessId());
 		this. deleteOperationMetadataBlockingQueue.offer(d);
 		// update status of process record to Hash values POPULATED
@@ -130,7 +130,7 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		this.beanRegistryServiceImpl.run(insertJob, jobParametersBuilder.toJobParameters());
 		// remove files
 		Path path = Paths.get(insertOperationMetadata.getFileName());
-		Files.delete(path);
+	//	Files.delete(path);
 	}
 
 	@Override

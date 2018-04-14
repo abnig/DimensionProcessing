@@ -13,6 +13,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
+import org.springframework.batch.support.DatabaseType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
@@ -179,7 +180,7 @@ public class BeanConfig {
 		JobRepositoryFactoryBean jobRepository = new JobRepositoryFactoryBean();
 		jobRepository.setDataSource(mysqlDataSource);
 		jobRepository.setTransactionManager(transactionManager);
-		jobRepository.setDatabaseType("mySQL");
+		jobRepository.setDatabaseType(DatabaseType.MYSQL.name());
 		return jobRepository;
 	}
 
