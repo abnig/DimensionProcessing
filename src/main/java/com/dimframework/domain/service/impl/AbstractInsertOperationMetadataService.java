@@ -5,9 +5,6 @@ import java.nio.file.Paths;
 
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.core.step.tasklet.TaskletStep;
@@ -18,47 +15,16 @@ import org.springframework.batch.item.file.FlatFileItemWriter;
 import org.springframework.batch.item.file.transform.PassThroughLineAggregator;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.dimframework.domain.InsertOperationMetadata;
-import com.dimframework.domain.service.DimensionMetadataService;
 import com.dimframework.rowmapper.CommonRowMapper;
 
 @Service("abstractInsertOperationMetadataService")
 public abstract class AbstractInsertOperationMetadataService extends OperationMetadataService {
-
-	@Autowired
-	@Qualifier("schemaName")
-	String schemaName;
-
-	@Autowired
-	ApplicationContext applicationContext;
-
-	AutowireCapableBeanFactory autowireCapableBeanFactory;
-
-	BeanDefinitionRegistry beanDefinitionRegistry;
-
-	JobBuilderFactory jobBuilderFactory;
-
-	StepBuilderFactory stepBuilderFactory;
-
-	@Autowired
-	JobRepositoryFactoryBean jobRepository;
-
-	@Autowired
-	private DimensionMetadataService dimensionMetadataDaoServiceImpl;
-
-	@Autowired
-	DataSourceTransactionManager transactionManager;
 
 	final private String createInsertOperationJdbcCursorItemReader(InsertOperationMetadata insertOperationMetadata)
 			throws Exception {

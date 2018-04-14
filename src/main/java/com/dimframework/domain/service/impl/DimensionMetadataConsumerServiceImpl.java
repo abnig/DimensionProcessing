@@ -120,6 +120,8 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		this.insertOperationMetadataBlockingQueue.offer(insertOperationMetadata);
 	}
 	
+	// |Sat Apr 14 00:21:45 EDT 2018| -- %a' '%b' '%e' '%H' '%i' '%S %Y
+	
 	@Override
 	public void processInsertOperation() throws InterruptedException, JobExecutionAlreadyRunningException,
 			JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException, IOException {

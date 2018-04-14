@@ -76,6 +76,8 @@ public class BeanConfig {
 	
 	@Value("${schemaName}")
 	private String schemaName;
+	// YYYY-MM-DD HH:MM:SS
+	// DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 	
 	@Bean
 	public String hashDataFilesBasePath(){

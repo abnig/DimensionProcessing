@@ -14,9 +14,9 @@ import com.dimframework.domain.InsertOperationMetadata;
 import com.dimframework.domain.service.InsertOperationService;
 
 @Service("insertOperationServiceImpl")
-public class InsertOperationMetadataService extends AbstractInsertOperationMetadataService implements InsertOperationService, InitializingBean {
+public class InsertOperationMetadataServiceImpl extends AbstractInsertOperationMetadataService implements InsertOperationService, InitializingBean {
 	
-	private Logger logger = Logger.getLogger(InsertOperationMetadataService.class);
+	private Logger logger = Logger.getLogger(InsertOperationMetadataServiceImpl.class);
 	
 	@Override
 	public void afterPropertiesSet() throws Exception {
