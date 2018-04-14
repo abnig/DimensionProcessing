@@ -1,5 +1,6 @@
 package com.dimframework.workerthread;
 
+import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.log4j.Logger;
@@ -49,6 +50,9 @@ public class DimensionMetadataConsumerWorker implements Runnable {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (JobParametersInvalidException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} finally {

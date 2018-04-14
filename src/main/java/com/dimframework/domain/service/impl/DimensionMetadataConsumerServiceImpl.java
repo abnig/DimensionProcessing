@@ -24,9 +24,7 @@ import org.springframework.stereotype.Component;
 import com.dimframework.domain.DeleteOperationMetadata;
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.DimensionProcessLog;
-import com.dimframework.domain.HashFileMetadata;
 import com.dimframework.domain.InsertOperationMetadata;
-import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.domain.enums.EDWReplicationStatus;
 import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
 import com.dimframework.domain.service.BeanRegistryService;
@@ -44,9 +42,6 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 	@Resource
 	private BlockingQueue<DimensionMetadata> dimensionMetadataBlockingQueue;
 
-	@Resource
-	private BlockingQueue<HashFileMetadata> hashFileMetadataBlockingQueue;
-	
 	@Resource
 	private BlockingQueue<DeleteOperationMetadata> deleteOperationMetadataBlockingQueue;
 	
@@ -73,7 +68,7 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 	private String schemaName;
 
 	@Override
-	public HashFileMetadata processDimensionMetadata() throws InterruptedException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException {
+	public void processDimensionMetadata() throws InterruptedException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException, IOException {
 		DimensionMetadata dimensionMetadata = this.dimensionMetadataBlockingQueue.take();
 		DimensionProcessLog runLog = new DimensionProcessLog(null, new Timestamp(new Date().getTime()), null, dimensionMetadata.getMetadataId(), EDWReplicationStatus.INIT.toString(), "N/A");
 		DimensionProcessLog dimensionProcessLog = this.DimensionProcessLogDaoServiceImpl.create(runLog);
@@ -88,22 +83,13 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
 		jobParametersBuilder.addLong("runid", new Date().getTime());
 		this.beanRegistryServiceImpl.run(job, jobParametersBuilder.toJobParameters());
-		HashFileMetadata hashFileMetaData = new HashFileMetadata(dimensionMetadata, populateHashBatchJobMetadata.getFullyQualifiedFileName(), schemaName, dimensionProcessLog.getProcessId());
-		hashFileMetadataBlockingQueue.offer(hashFileMetaData);
-		return hashFileMetaData;
-	}
-	
-	@Override
-	public void processHashFileMetadata() throws InterruptedException, IOException {
-		HashFileMetadata hm = hashFileMetadataBlockingQueue.take();
-		this.dimensionMetadataDaoServiceImpl.executeLoadIntoHash(hm);
-		logger.debug("Loaded data successfully in table " + hm.getDimensionMetadata().getSourceTableHash());
+		logger.debug("Loaded data successfully in table " + dimensionMetadata.getSourceTableHash());
 		// remove files
-		Path path = Paths.get(hm.getFileName());
-	//	Files.delete(path);
-		DeleteOperationMetadata d = dimensionMetadataDaoServiceImpl.generateDeleteOperationBatchJobMetadata(hm.getDimensionMetadata(), hm.getProcessId());
+		Path path = Paths.get(populateHashBatchJobMetadata.getFileName());
+	    Files.delete(path);
+		DeleteOperationMetadata d = dimensionMetadataDaoServiceImpl.generateDeleteOperationBatchJobMetadata(dimensionMetadata, populateHashBatchJobMetadata.getProcessId());
 		this. deleteOperationMetadataBlockingQueue.offer(d);
-		// update status of process record to Hash values POPULATED
+
 	}
 
 	@Override

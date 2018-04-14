@@ -6,7 +6,6 @@ import java.util.List;
 import com.dimframework.domain.DeleteOperationMetadata;
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.DimensionProcessLog;
-import com.dimframework.domain.HashFileMetadata;
 import com.dimframework.domain.InsertOperationMetadata;
 import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
@@ -21,7 +20,7 @@ public interface DimensionMetadataService {
 	
 	String concatenatePKHashAndDataColumnHash(String rowData);
 	
-	void executeLoadIntoHash(HashFileMetadata hashFileMetadata);
+	void executeLoadIntoHash(PopulateHashBatchJobMetadata  hashFileMetadata);
 	
 	void executeLoadIntoDimensionTable(InsertOperationMetadata insertOperationMetadata);
 	

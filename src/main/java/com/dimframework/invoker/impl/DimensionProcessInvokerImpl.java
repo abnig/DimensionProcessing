@@ -14,12 +14,10 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import com.dimframework.domain.DimensionMetadata;
-import com.dimframework.domain.HashFileMetadata;
 import com.dimframework.domain.service.impl.DimensionMetadataDaoServiceImpl;
 import com.dimframework.invoker.DimensionProcessInvoker;
 import com.dimframework.workerthread.DeleteOperationMetadataConsumerWorker;
 import com.dimframework.workerthread.DimensionMetadataConsumerWorker;
-import com.dimframework.workerthread.HashFileMetadataConsumerWorker;
 import com.dimframework.workerthread.InsertOperationMetadataConsumerWorker;
 import com.dimframework.workerthread.UpdateOperationMetadataConsumerWorker;
 
@@ -40,15 +38,11 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 	@Resource
 	private BlockingQueue<DimensionMetadata> dimensionMetadataBlockingQueue;
 	
-	@Resource
-	private BlockingQueue<HashFileMetadata>	hashFileMetadataBlockingQueue;
-
 	@Override
 	public void invoker(String domainName, Date effectiveStartDate, Date effectiveEndDate ){
 		List<DimensionMetadata> list = this.dimensionMetadataDaoServiceImpl.getByDomainName(domainName, effectiveStartDate, effectiveEndDate);
 		this.pushToDimensionMetadataBlockingQueue(list);
 		this.callPerformDimensionProcessing(list, domainName);
-		this.callProcessHashFile(list, domainName);
 		this.callPerformDeleteOperation(list, domainName);
 		this.callPerformInsertOperation(list, domainName);
 	}
@@ -63,15 +57,6 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 		for (int i = 0; i < list.size(); i++) {
 			DimensionMetadataConsumerWorker workerThread = (DimensionMetadataConsumerWorker) this.applicationContext
 					.getBean("dimensionMetadataConsumerWorker", countDownLatch);
-			this.dimensionProcessingExecutorService.execute(workerThread);
-		}
-	}
-	
-	private void callProcessHashFile(List<DimensionMetadata> list, String domainName) {
-		CountDownLatch countDownLatch = (CountDownLatch) this.applicationContext.getBean("countDownLatch", list.size());
-		for (int i = 0; i < list.size(); i++) {
-			HashFileMetadataConsumerWorker workerThread = (HashFileMetadataConsumerWorker) this.applicationContext
-					.getBean("hashFileMetadataConsumerWorker", countDownLatch);
 			this.dimensionProcessingExecutorService.execute(workerThread);
 		}
 	}

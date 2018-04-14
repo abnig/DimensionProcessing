@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import com.dimframework.domain.DeleteOperationMetadata;
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.DimensionProcessLog;
-import com.dimframework.domain.HashFileMetadata;
 import com.dimframework.domain.InsertOperationMetadata;
 import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.domain.dao.DimensionMetadataDao;
@@ -135,7 +134,7 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 		insertSQL.append(generateValuesClauseForPopulateHashBatchJob(dimensionMetadata));
 		insertSQL.append(" );");
 		String fullyQualifiedFileName = 	this.hashDataFilesBasePath.concat(runLog.getProcessId().toString()).concat(dimensionMetadata.getSourceTable());
-		PopulateHashBatchJobMetadata p = new PopulateHashBatchJobMetadata(dimensionMetadata, selectSQL.toString(),  insertSQL.toString(), runLog, fullyQualifiedFileName);
+		PopulateHashBatchJobMetadata p = new PopulateHashBatchJobMetadata(dimensionMetadata, selectSQL.toString(),  insertSQL.toString(), runLog, fullyQualifiedFileName, runLog.getProcessId(), this.schemaName);
 		return p;
 	}
 	
@@ -217,7 +216,7 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 	}
 
 	@Override
-	public void executeLoadIntoHash(HashFileMetadata hashFileMetadata) {
+	public void executeLoadIntoHash(PopulateHashBatchJobMetadata  hashFileMetadata) {
 		this.dimensionMetadataDaoImpl.executeLoadIntoHash(hashFileMetadata);
 	}
 

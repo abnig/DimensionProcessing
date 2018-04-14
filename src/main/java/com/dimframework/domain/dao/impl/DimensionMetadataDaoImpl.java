@@ -11,9 +11,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.dimframework.domain.DimensionMetadata;
-import com.dimframework.domain.HashFileMetadata;
 import com.dimframework.domain.InsertOperationMetadata;
 import com.dimframework.domain.dao.DimensionMetadataDao;
+import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
 import com.dimframework.rowmapper.DimensionMetadataRowMapper;
 
 @Repository("dimensionMetadataDaoImpl")
@@ -40,7 +40,7 @@ public class DimensionMetadataDaoImpl implements DimensionMetadataDao {
 	}
 
 	@Override
-	public void executeLoadIntoHash(HashFileMetadata hashFileMetadata) {
+	public void executeLoadIntoHash(PopulateHashBatchJobMetadata  hashFileMetadata) {
 		StringBuilder sql = new StringBuilder("LOAD DATA LOCAL INFILE '").append(hashFileMetadata.getFileName()).append("'");
 		sql.append(" INTO TABLE ").append(hashFileMetadata.getSchemaName()).append(".").append(hashFileMetadata.getDimensionMetadata().getSourceTableHash());
 		sql.append(" FIELDS TERMINATED BY '").append(hashFileMetadata.getDimensionMetadata().getFieldDelimiter()).append("'"); 

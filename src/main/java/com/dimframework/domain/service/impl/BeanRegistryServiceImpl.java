@@ -16,6 +16,7 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersInvalidException;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.JobLauncher;
@@ -25,6 +26,8 @@ import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteExcep
 import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.core.resource.ListPreparedStatementSetter;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.core.step.tasklet.TaskletStep;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
@@ -32,6 +35,7 @@ import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.file.FlatFileItemWriter;
 import org.springframework.batch.item.file.transform.PassThroughLineAggregator;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
@@ -48,6 +52,7 @@ import com.dimframework.database.support.PopulateHashItemProcessor;
 import com.dimframework.domain.pojo.OutboundFileMetadata;
 import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
 import com.dimframework.domain.service.BeanRegistryService;
+import com.dimframework.domain.service.DimensionMetadataService;
 import com.dimframework.rowmapper.CommonRowMapper;
 
 @Component("beanRegistryServiceImpl")
@@ -80,6 +85,9 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 	
 	@Autowired
 	private PopulateHashItemProcessor populateHashItemProcessor;
+	
+	@Autowired
+	private DimensionMetadataService dimensionMetadataDaoServiceImpl;
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
@@ -280,7 +288,9 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 		bdb.addConstructorArgValue(populateHashBatchJobMetadata.getSelectSQL());
 		bdb.addConstructorArgValue(populateHashBatchJobMetadata.getInsertSQL());
 		bdb.addConstructorArgValue(populateHashBatchJobMetadata.getDimensionProcessLog());
-		bdb.addConstructorArgValue(populateHashBatchJobMetadata.getFullyQualifiedFileName());
+		bdb.addConstructorArgValue(populateHashBatchJobMetadata.getFileName());
+		bdb.addConstructorArgValue(populateHashBatchJobMetadata.getProcessId());
+		bdb.addConstructorArgValue(populateHashBatchJobMetadata.getSchemaName());
 		String name = populateHashBatchJobMetadata.getDimensionMetadata().getMetadataId().toString().concat("_PopulateHashBatchJobMetadata");
 		beanDefinitionRegistry.registerBeanDefinition(name, bdb.getBeanDefinition());
 		return name;
@@ -304,10 +314,23 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 		String name = "LoadHash_" + o.getDimensionMetadata().getSourceTable() + "_Job_" + o.getDimensionProcessLog().getProcessId();
 		try {
 			return jobBuilderFactory.get(name).repository(jobRepository.getObject()).incrementer(new RunIdIncrementer())
-					.flow(createStep(o)).end().build();
+					.flow(createStep(o)).next(createLoadIntoHashColumnsStep(o)).end().build();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+	
+	final Step createLoadIntoHashColumnsStep(PopulateHashBatchJobMetadata hm) {
+		String name = "LoadOperation_"  
+				+ hm.getDimensionMetadata().getSourceTableHash() + "_Step_" + hm.getProcessId() ;
+		TaskletStep step = stepBuilderFactory.get(name).tasklet(new Tasklet() {
+			@Override
+			public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+				dimensionMetadataDaoServiceImpl.executeLoadIntoHash(hm);
+				return RepeatStatus.FINISHED;
+			}
+		}).transactionManager(this.transactionManager).build();
+		return step;
 	}
 
 	private Step createStep(PopulateHashBatchJobMetadata o) {
@@ -327,7 +350,7 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 		FlatFileItemWriter<String> flatFileItemWriter = new FlatFileItemWriter<String>();
 		BeanDefinitionBuilder bdb = BeanDefinitionBuilder.genericBeanDefinition(flatFileItemWriter.getClass());
 		Long processId = o.getDimensionProcessLog().getProcessId();
-		Path out = Paths.get(o.getFullyQualifiedFileName());
+		Path out = Paths.get(o.getFileName());
 		String name = processId.toString().concat("_flatFileItemWriter");
 		bdb.addPropertyValue("resource", new FileSystemResource(out.toFile()));
 		bdb.addPropertyValue("shouldDeleteIfEmpty", Boolean.TRUE);

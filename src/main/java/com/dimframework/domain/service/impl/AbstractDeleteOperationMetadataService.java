@@ -1,25 +1,18 @@
 package com.dimframework.domain.service.impl;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.log4j.Logger;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.step.tasklet.TaskletStep;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.database.ItemSqlParameterSourceProvider;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.jdbc.core.SingleColumnRowMapper;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import com.dimframework.database.support.CustomSqlParameterSourceProvider;
 import com.dimframework.domain.DeleteOperationMetadata;
 
 @Service("abstractDeleteOperationMetadataService")
@@ -74,27 +67,5 @@ public abstract class AbstractDeleteOperationMetadataService extends OperationMe
 		this.addToMap(deleteOperationMetadata.getProcessId(), name);
 		return name;
 	}
-	
-	
-	final class CustomSqlParameterSourceProvider implements ItemSqlParameterSourceProvider<String> {
-		
-		private Logger logger = Logger.getLogger(CustomSqlParameterSourceProvider.class);
-		
-		private final Date effectiveEndDate;
-		
-		public CustomSqlParameterSourceProvider(Date effectiveEndDate) {
-			this.effectiveEndDate = effectiveEndDate;
-		}
-
-		@Override
-		public SqlParameterSource createSqlParameterSource(final String item) {
-			Map<String, Object> map = new HashMap<String, Object>();
-			map.put("listHashPK", item);
-			logger.debug("Effective End Date : " + effectiveEndDate);
-			map.put("effectiveEndDate", this.effectiveEndDate);
-			return new MapSqlParameterSource(map);
-		}
-	}
-
 
 }

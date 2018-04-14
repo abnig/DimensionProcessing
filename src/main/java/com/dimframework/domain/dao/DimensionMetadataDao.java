@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import com.dimframework.domain.DimensionMetadata;
-import com.dimframework.domain.HashFileMetadata;
 import com.dimframework.domain.InsertOperationMetadata;
+import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
 
 public interface DimensionMetadataDao {
 	
@@ -13,7 +13,7 @@ public interface DimensionMetadataDao {
 	
 	void truncateTable(String tableName);
 	
-	void executeLoadIntoHash(HashFileMetadata hashFileMetadata);
+	void executeLoadIntoHash(PopulateHashBatchJobMetadata  hashFileMetadata);
 	
 	void executeLoadIntoDimensionTable(InsertOperationMetadata insertOperationMetadata);
 
