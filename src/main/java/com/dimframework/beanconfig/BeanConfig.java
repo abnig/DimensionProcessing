@@ -1,6 +1,7 @@
 package com.dimframework.beanconfig;
 
 import java.security.NoSuchAlgorithmException;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -23,6 +24,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -31,6 +33,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import com.dimframework.domain.DeleteOperationMetadata;
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.InsertOperationMetadata;
+import com.dimframework.rowmapper.CommonRowMapper;
+import com.dimframework.rowmapper.InsertCommonRowMapper;
 
 @Configuration
 @ComponentScan("com.dimframework")
@@ -75,8 +79,13 @@ public class BeanConfig {
 	
 	@Value("${schemaName}")
 	private String schemaName;
-	// YYYY-MM-DD HH:MM:SS
-	// DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+	
+	@Bean
+	public DateTimeFormatter defaultMySqlDateFormatter() {
+		// YYYY-MM-DD HH:MM:SS
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s");
+		return formatter;
+	}
 	
 	@Bean
 	public String hashDataFilesBasePath(){
@@ -97,6 +106,18 @@ public class BeanConfig {
 	public String schemaName() {
 		return new String(schemaName);
 	}
+	
+	@Bean
+	public CommonRowMapper commonRowMapper(String fieldDelimiter, String recordTerminator) {
+		return new CommonRowMapper(fieldDelimiter, recordTerminator);
+	}
+	
+	@Bean
+	public InsertCommonRowMapper insertCommonRowMapper(String fieldDelimiter, String recordTerminator) {
+		return new InsertCommonRowMapper(fieldDelimiter, recordTerminator);
+	}
+	
+	
 
 	@Bean
 	public DriverManagerDataSource mysqlDataSource() throws NoSuchAlgorithmException {
@@ -117,6 +138,13 @@ public class BeanConfig {
 	public NamedParameterJdbcTemplate namedJdbcMySQLTemplate(DriverManagerDataSource mysqlDataSource) {
 		NamedParameterJdbcTemplate namedJdbcMySQLTemplate = new NamedParameterJdbcTemplate(mysqlDataSource);
 		return namedJdbcMySQLTemplate;
+	}
+	
+	@Bean(name = "mySqlJdbcTemplate")
+	public JdbcTemplate mySqlJdbcTemplate(DriverManagerDataSource mysqlDataSource) {
+		JdbcTemplate mySqlJdbcTemplate = new JdbcTemplate(mysqlDataSource);
+		mySqlJdbcTemplate.setIgnoreWarnings(false);
+		return mySqlJdbcTemplate;
 	}
 	
 	@Bean(name = "mySQLSimpleJdbcInsert")

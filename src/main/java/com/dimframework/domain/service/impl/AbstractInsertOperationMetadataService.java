@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.dimframework.domain.InsertOperationMetadata;
-import com.dimframework.rowmapper.CommonRowMapper;
 
 @Service("abstractInsertOperationMetadataService")
 public abstract class AbstractInsertOperationMetadataService extends OperationMetadataService {
@@ -36,7 +35,7 @@ public abstract class AbstractInsertOperationMetadataService extends OperationMe
 						: insertOperationMetadata.getDimensionMetadata().getDataSourceBeanName());
 		bdb.addPropertyValue("fetchSize", insertOperationMetadata.getDimensionMetadata().getCommitInterval());
 		bdb.addPropertyValue("saveState", Boolean.FALSE.booleanValue());
-		bdb.addPropertyValue("rowMapper", new CommonRowMapper(insertOperationMetadata.getDimensionMetadata().getFieldDelimiter(), insertOperationMetadata.getDimensionMetadata().getRecordTerminator()));
+		bdb.addPropertyValue("rowMapper", insertCommonRowMapper);
 
 		bdb.addPropertyValue("sql", insertOperationMetadata.getSelectSQL());
 		String name = insertOperationMetadata.getProcessId().toString().concat("_InsertOperationJdbcCursorItemReader");

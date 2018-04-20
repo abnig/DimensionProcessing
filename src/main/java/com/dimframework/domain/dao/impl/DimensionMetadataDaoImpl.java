@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -21,6 +22,9 @@ public class DimensionMetadataDaoImpl implements DimensionMetadataDao {
 	
 	@Autowired
 	private NamedParameterJdbcTemplate namedJdbcMySQLTemplate;
+	
+	@Autowired
+	private JdbcTemplate mySqlJdbcTemplate;
 	
 	private Logger logger = Logger.getLogger(DimensionMetadataDaoImpl.class);
 
@@ -51,7 +55,7 @@ public class DimensionMetadataDaoImpl implements DimensionMetadataDao {
 		sql.append(hashFileMetadata.getDimensionMetadata().getDataFieldsHashColumn()).append(");");
 		String sqlString = sql.toString();
 		logger.debug("SQL Command to load into " + hashFileMetadata.getDimensionMetadata().getSourceTableHash() + " table is: " + sqlString);
-		this.namedJdbcMySQLTemplate.getJdbcOperations().execute(sqlString);
+		this.mySqlJdbcTemplate.execute(sqlString);
 	}
 
 	@Override

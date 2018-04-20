@@ -1,5 +1,6 @@
 package com.dimframework.domain.service.impl;
 
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -8,6 +9,7 @@ import javax.annotation.Resource;
 
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.flow.JobExecutionDecider;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,6 +20,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 
 import com.dimframework.domain.service.DimensionMetadataService;
+import com.dimframework.rowmapper.InsertCommonRowMapper;
 
 @Service("operationMetadataService")
 public class OperationMetadataService {
@@ -42,12 +45,21 @@ public class OperationMetadataService {
 
 	@Autowired
 	JobRepositoryFactoryBean jobRepository;
+	
+	@Autowired
+	InsertCommonRowMapper insertCommonRowMapper;
 
 	@Autowired
 	DimensionMetadataService dimensionMetadataDaoServiceImpl;
 
 	@Autowired
 	DataSourceTransactionManager transactionManager;
+	
+	@Autowired
+	JobExecutionDecider completeJobOnNoDataReadJobExecutionDecider;
+	
+	@Autowired
+	DateTimeFormatter defaultMySqlDateFormatter; 
 	
 	synchronized void addToMap(Long runId, String beanName) {
 		if (this.registeredBeanMap.containsKey(runId)) {

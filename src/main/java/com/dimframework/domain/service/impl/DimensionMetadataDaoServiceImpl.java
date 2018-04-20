@@ -108,10 +108,12 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 		// SELECT DH.HASH_PK 		FROM dim.employee_dim DH  LEFT OUTER JOIN dim.employee_hash NH  ON DH.HASH_PK = NH.HASH_PK  WHERE DH.IS_ACTV_FL = 'Y' AND NH.HASH_PK IS NULL;
 		StringBuilder selectSQL = new StringBuilder(" SELECT DH.HASH_PK ");
 		selectSQL.append(" FROM ").append(dimensionMetadata.getDimTable()).append(" DH ");
-		selectSQL.append(" LEFT OUTER JOIN  ").append(dimensionMetadata.getSourceTableHash()).append(" NH ");
-		selectSQL.append(" ON DH.HASH_PK = NH.HASH_PK ");
-		selectSQL.append(" WHERE DH.IS_ACTV_FL = 'Y' AND NH.HASH_PK IS NULL; ");
-		
+		selectSQL.append(" WHERE NOT EXISTS (SELECT 1 FROM ").append(dimensionMetadata.getSourceTableHash()).append(" NH ");
+		selectSQL.append(" WHERE DH.HASH_PK = NH.HASH_PK ");
+		selectSQL.append(" AND DH.IS_ACTV_FL = 'Y' );");
+		logger.info("Delete Step; SELECT Query - " + selectSQL); 
+		// SELECT DH.HASH_PK  FROM employee_dim DH  
+		// WHERE NOT EXISTS (SELECT 1 FROM dim.employee_hash NH  WHERE NH.HASH_PK = DH.HASH_PK AND DH.IS_ACTV_FL = 'Y');
 		//         UPDATE dim.employee_dim DH SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effEndDate WHERE DH.HASH_PK IN (:colHashPK);
 		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
 		updateSQL.append(" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK; ");

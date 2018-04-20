@@ -1,9 +1,14 @@
 package com.dimframework.domain.service.impl;
 
+import java.time.ZoneId;
+
 import org.apache.log4j.Logger;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.builder.FlowBuilder;
+import org.springframework.batch.core.job.flow.Flow;
+import org.springframework.batch.core.job.flow.FlowExecutionStatus;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -30,8 +35,24 @@ public class InsertOperationMetadataServiceImpl extends AbstractInsertOperationM
 	public Job instantiateInsertOperationBatchJob(InsertOperationMetadata insertOperationMetadata) {
 		String name = "InsertOperation_" + insertOperationMetadata.getDimensionMetadata().getSourceTable() + "_Job_" + insertOperationMetadata.getProcessId();
 		try {
-			return jobBuilderFactory.get(name).repository(jobRepository.getObject()).incrementer(new RunIdIncrementer())
-					.flow(super.createInsertOperationStep(insertOperationMetadata)).next(createLoadIntoDimensionStep(insertOperationMetadata)).end().build();
+		    FlowBuilder<Flow> flowBuilder = new FlowBuilder<Flow>("InsertOperationFlow");
+
+		    Flow flow = flowBuilder
+		        .start(super.createInsertOperationStep(insertOperationMetadata))
+		        .next(completeJobOnNoDataReadJobExecutionDecider)
+		        .on("CONTINUE")
+		        .to(createLoadIntoDimensionStep(insertOperationMetadata))
+		        .from(completeJobOnNoDataReadJobExecutionDecider)
+		        .on(FlowExecutionStatus.COMPLETED.getName())
+		        .end()
+		        .build();
+
+			return jobBuilderFactory.get(name)
+					.repository(jobRepository.getObject())
+					.incrementer(new RunIdIncrementer())
+					.start(flow)
+					.end()
+					.build();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -42,12 +63,13 @@ public class InsertOperationMetadataServiceImpl extends AbstractInsertOperationM
 			Long processId) {
 		
 		StringBuilder selectSQL = new StringBuilder("SELECT ").append(dimensionMetadata.getSourceTablePKColumns()).append(" , ").append(dimensionMetadata.getSourceTableDataColumns()).append(" , ");
-		selectSQL.append("'").append(dimensionMetadata.getEffectiveStartDate().toString()).append("' , '").append(dimensionMetadata.getEffectiveEndDate().toString()).append("' , 'Y' , ");
+		selectSQL.append("'").append(this.defaultMySqlDateFormatter.format(dimensionMetadata.getEffectiveStartDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())).append("' , '");
+		selectSQL.append(this.defaultMySqlDateFormatter.format(dimensionMetadata.getEffectiveEndDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())).append("' , 'Y' , ");
 		selectSQL.append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" , ").append(dimensionMetadata.getDataFieldsHashColumn());
 		selectSQL.append(" FROM ").append(this.schemaName).append(".").append(dimensionMetadata.getSourceTableHash()).append(" NH ");
 		selectSQL.append(" WHERE NOT EXISTS (SELECT 1 FROM ").append(this.schemaName).append(".").append(dimensionMetadata.getDimTable()).append(" DH ");
 		selectSQL.append(" WHERE NH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" = DH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" AND DH.IS_ACTV_FL = 'Y');");
-		logger.debug("SELECT Query to create file for insert operation: " + selectSQL.toString());
+		logger.info("SELECT Query to create file for insert operation: " + selectSQL.toString());
 		
 		String fileName = new StringBuilder(dimensionMetadata.getHashDataFilesBasePath()).append(processId.toString()).append(dimensionMetadata.getDimTable()).append("_insert").toString();
 		StringBuilder insertSQL = new StringBuilder(" LOAD DATA LOCAL INFILE ").append("'").append(fileName).append("'").append(" INTO TABLE ").append(this.schemaName).append(".").append(dimensionMetadata.getDimTable());

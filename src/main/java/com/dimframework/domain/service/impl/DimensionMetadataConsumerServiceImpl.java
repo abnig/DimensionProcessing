@@ -85,7 +85,7 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		logger.debug("Loaded data successfully in table " + dimensionMetadata.getSourceTableHash());
 		// remove files
 		Path path = Paths.get(populateHashBatchJobMetadata.getFileName());
-	    Files.delete(path);
+	    // Files.delete(path);
 		DeleteOperationMetadata d = dimensionMetadataDaoServiceImpl.generateDeleteOperationBatchJobMetadata(dimensionMetadata, populateHashBatchJobMetadata.getProcessId());
 		this. deleteOperationMetadataBlockingQueue.offer(d);
 
