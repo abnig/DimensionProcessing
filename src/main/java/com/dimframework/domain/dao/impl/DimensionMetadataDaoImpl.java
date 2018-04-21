@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.InsertOperationMetadata;
+import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.domain.dao.DimensionMetadataDao;
 import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
 import com.dimframework.rowmapper.DimensionMetadataRowMapper;
@@ -62,6 +63,13 @@ public class DimensionMetadataDaoImpl implements DimensionMetadataDao {
 	public void executeLoadIntoDimensionTable(InsertOperationMetadata insertOperationMetadata) {
 		logger.debug("SQL Command to load into " + insertOperationMetadata.getDimensionMetadata().getDimTable() + " table is: " + insertOperationMetadata.getInsertSQL());
 		this.namedJdbcMySQLTemplate.getJdbcOperations().execute(insertOperationMetadata.getInsertSQL());
+		
+	}
+
+	@Override
+	public void executeLoadIntoDimensionTable(UpdateOperationMetadata updateOperationMetadata) {
+		logger.debug("SQL Command to load into " + updateOperationMetadata.getDimensionMetadata().getDimTable() + " table is: " + updateOperationMetadata.getInsertSQL());
+		this.namedJdbcMySQLTemplate.getJdbcOperations().execute(updateOperationMetadata.getInsertSQL());
 		
 	}
 

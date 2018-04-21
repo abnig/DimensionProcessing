@@ -6,6 +6,7 @@ import org.springframework.batch.core.JobParametersInvalidException;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.repository.JobRestartException;
+import org.springframework.beans.BeansException;
 
 public interface DimensionMetadataConsumerService {
 	
@@ -15,6 +16,6 @@ public interface DimensionMetadataConsumerService {
 	
 	void processInsertOperation() throws InterruptedException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException, IOException;
 
-	void processUpdateOperation();
+	void processUpdateOperation() throws InterruptedException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException, IOException, BeansException, Exception;
 
 }

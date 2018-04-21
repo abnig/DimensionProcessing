@@ -44,6 +44,7 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 		this.pushToDimensionMetadataBlockingQueue(list);
 		this.callPerformDimensionProcessing(list, domainName);
 		this.callPerformDeleteOperation(list, domainName);
+		this.callPerformUpdateOperation(list, domainName);
 		this.callPerformInsertOperation(list, domainName);
 	}
 

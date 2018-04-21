@@ -17,6 +17,7 @@ import org.springframework.batch.core.JobParametersInvalidException;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.repository.JobRestartException;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,7 @@ import com.dimframework.domain.DeleteOperationMetadata;
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.DimensionProcessLog;
 import com.dimframework.domain.InsertOperationMetadata;
+import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.domain.enums.EDWReplicationStatus;
 import com.dimframework.domain.pojo.PopulateHashBatchJobMetadata;
 import com.dimframework.domain.service.BeanRegistryService;
@@ -33,6 +35,7 @@ import com.dimframework.domain.service.DimensionMetadataConsumerService;
 import com.dimframework.domain.service.DimensionMetadataService;
 import com.dimframework.domain.service.DimensionProcessLogDaoService;
 import com.dimframework.domain.service.InsertOperationService;
+import com.dimframework.domain.service.UpdateOperationService;
 
 @Component("dimensionMetadataConsumerServiceImpl")
 public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataConsumerService {
@@ -47,6 +50,9 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 	
 	@Resource
 	private BlockingQueue<InsertOperationMetadata> insertOperationMetadataBlockingQueue;
+	
+	@Resource
+	private BlockingQueue<UpdateOperationMetadata> updateOperationMetadataBlockingQueue;
 
 	@Autowired
 	private DimensionMetadataService dimensionMetadataDaoServiceImpl;
@@ -59,6 +65,9 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 	
 	@Autowired
 	private InsertOperationService insertOperationServiceImpl;
+	
+	@Autowired
+	private UpdateOperationService updateOperationServiceImpl;  
 	
 	@Autowired
 	private BeanRegistryService beanRegistryServiceImpl;
@@ -77,7 +86,6 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		PopulateHashBatchJobMetadata populateHashBatchJobMetadata = this.dimensionMetadataDaoServiceImpl.generatePopulateHashBatchJobMetadata(dimensionMetadata, dimensionProcessLog);
 		String beanName = this.beanRegistryServiceImpl.getPrototypePopulateHashBatchJobMetadata(populateHashBatchJobMetadata);
 		
-		logger.debug("Created bean name = " + beanName + " for  " + populateHashBatchJobMetadata.toString());
 		Job job = this.beanRegistryServiceImpl.instantiatePopulateHashJob(beanName);
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
 		jobParametersBuilder.addLong("runid", new Date().getTime());
@@ -85,7 +93,8 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		logger.debug("Loaded data successfully in table " + dimensionMetadata.getSourceTableHash());
 		// remove files
 		Path path = Paths.get(populateHashBatchJobMetadata.getFileName());
-	    // Files.delete(path);
+		if(Files.exists(path))
+			Files.delete(path);
 		DeleteOperationMetadata d = dimensionMetadataDaoServiceImpl.generateDeleteOperationBatchJobMetadata(dimensionMetadata, populateHashBatchJobMetadata.getProcessId());
 		this. deleteOperationMetadataBlockingQueue.offer(d);
 
@@ -98,34 +107,44 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
 		jobParametersBuilder.addDate("effectiveEndDate", deleteOperationMetadata.getDimensionMetadata().getEffectiveEndDate());
 		this.beanRegistryServiceImpl.run(deleteJob, jobParametersBuilder.toJobParameters());
-	//	UpdateOperationMetadata u = dimensionMetadataDaoServiceImpl.generateUpdateOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
-		
-		// create InsertOperationMetadata object
-		InsertOperationMetadata insertOperationMetadata = this.insertOperationServiceImpl.generateInsertOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
-		this.insertOperationMetadataBlockingQueue.offer(insertOperationMetadata);
+	    UpdateOperationMetadata u = dimensionMetadataDaoServiceImpl.generateUpdateOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
+		this.updateOperationMetadataBlockingQueue.offer(u);
+		logger.info("Completed delete operation for " + deleteOperationMetadata.getDimensionMetadata().getDimTable());
 	}
 	
-	// |Sat Apr 14 00:21:45 EDT 2018| -- %a' '%b' '%e' '%H' '%i' '%S %Y
+	@Override
+	public void processUpdateOperation() throws BeansException, Exception {
+		UpdateOperationMetadata updateOperationMetadata = this.updateOperationMetadataBlockingQueue.take();
+		logger.info("Started update operation for " + updateOperationMetadata.getDimensionMetadata().getDimTable());
+		Job updateJob = updateOperationServiceImpl.instantiateUpdateOperationBatchJob(updateOperationMetadata);
+		// create InsertOperationMetadata object
+		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
+		jobParametersBuilder.addDate("effectiveStartDate", updateOperationMetadata.getDimensionMetadata().getEffectiveStartDate());
+		this.beanRegistryServiceImpl.run(updateJob, jobParametersBuilder.toJobParameters());
+		// remove files
+		Path path = Paths.get(updateOperationMetadata.getFileName());
+		if(Files.exists(path))
+			Files.delete(path);
+		
+		InsertOperationMetadata insertOperationMetadata = this.insertOperationServiceImpl.generateInsertOperationBatchJobMetadata(updateOperationMetadata.getDimensionMetadata(), updateOperationMetadata.getProcessId());
+		this.insertOperationMetadataBlockingQueue.offer(insertOperationMetadata);
+		logger.info("Completed update operation for " + updateOperationMetadata.getDimensionMetadata().getDimTable());
+	}
 	
 	@Override
 	public void processInsertOperation() throws InterruptedException, JobExecutionAlreadyRunningException,
 			JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException, IOException {
 		InsertOperationMetadata insertOperationMetadata = insertOperationMetadataBlockingQueue.take();
+		logger.info("Started insert operation for " + insertOperationMetadata.getDimensionMetadata().getDimTable());
 		Job insertJob = insertOperationServiceImpl.instantiateInsertOperationBatchJob(insertOperationMetadata);
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
 		jobParametersBuilder.addDate("effectiveStartDate", insertOperationMetadata.getDimensionMetadata().getEffectiveStartDate());
 		this.beanRegistryServiceImpl.run(insertJob, jobParametersBuilder.toJobParameters());
 		// remove files
 		Path path = Paths.get(insertOperationMetadata.getFileName());
-	//	Files.delete(path);
+		if(Files.exists(path))
+			Files.delete(path);
+		logger.info("Completed insert operation for " + insertOperationMetadata.getDimensionMetadata().getDimTable());
 	}
-
-	@Override
-	public void processUpdateOperation() {
-		// TODO Auto-generated method stub
-		
-	}
-	
-	
 
 }

@@ -28,5 +28,7 @@ public interface DimensionMetadataService {
 
 	UpdateOperationMetadata generateUpdateOperationBatchJobMetadata(DimensionMetadata dimensionMetadata,
 			Long processId);
+
+	void executeLoadIntoDimensionTable(UpdateOperationMetadata updateOperationMetadata);
 	
 }

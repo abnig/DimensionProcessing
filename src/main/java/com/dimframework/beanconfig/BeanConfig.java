@@ -33,6 +33,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import com.dimframework.domain.DeleteOperationMetadata;
 import com.dimframework.domain.DimensionMetadata;
 import com.dimframework.domain.InsertOperationMetadata;
+import com.dimframework.domain.UpdateOperationMetadata;
 import com.dimframework.rowmapper.CommonRowMapper;
 import com.dimframework.rowmapper.InsertCommonRowMapper;
 
@@ -51,7 +52,7 @@ public class BeanConfig {
 	private String driverClassName;
 
 	@Value("${jdbc.url}")
-	private 	String url;
+	private String url;
 
 	@Value("${jdbc.username}")
 	private String username;
@@ -73,22 +74,22 @@ public class BeanConfig {
 
 	@Value("${record.terminator}")
 	private String recordTerminatorAscii;
-	
+
 	@Value("${hash.datafile.base.path}")
 	private String hashDataFilesBasePath;
-	
+
 	@Value("${schemaName}")
 	private String schemaName;
-	
+
 	@Bean
 	public DateTimeFormatter defaultMySqlDateFormatter() {
 		// YYYY-MM-DD HH:MM:SS
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s");
 		return formatter;
 	}
-	
+
 	@Bean
-	public String hashDataFilesBasePath(){
+	public String hashDataFilesBasePath() {
 		return new String(hashDataFilesBasePath);
 	}
 
@@ -101,23 +102,21 @@ public class BeanConfig {
 	public String recordTerminator() {
 		return Character.toString((char) new Integer(recordTerminatorAscii).intValue());
 	}
-	
+
 	@Bean
 	public String schemaName() {
 		return new String(schemaName);
 	}
-	
+
 	@Bean
 	public CommonRowMapper commonRowMapper(String fieldDelimiter, String recordTerminator) {
 		return new CommonRowMapper(fieldDelimiter, recordTerminator);
 	}
-	
+
 	@Bean
 	public InsertCommonRowMapper insertCommonRowMapper(String fieldDelimiter, String recordTerminator) {
 		return new InsertCommonRowMapper(fieldDelimiter, recordTerminator);
 	}
-	
-	
 
 	@Bean
 	public DriverManagerDataSource mysqlDataSource() throws NoSuchAlgorithmException {
@@ -139,14 +138,14 @@ public class BeanConfig {
 		NamedParameterJdbcTemplate namedJdbcMySQLTemplate = new NamedParameterJdbcTemplate(mysqlDataSource);
 		return namedJdbcMySQLTemplate;
 	}
-	
+
 	@Bean(name = "mySqlJdbcTemplate")
 	public JdbcTemplate mySqlJdbcTemplate(DriverManagerDataSource mysqlDataSource) {
 		JdbcTemplate mySqlJdbcTemplate = new JdbcTemplate(mysqlDataSource);
 		mySqlJdbcTemplate.setIgnoreWarnings(false);
 		return mySqlJdbcTemplate;
 	}
-	
+
 	@Bean(name = "mySQLSimpleJdbcInsert")
 	public SimpleJdbcInsert mySQLSimpleJdbcInsert(DriverManagerDataSource mysqlDataSource) {
 		SimpleJdbcInsert namedJdbcMySQLTemplate = new SimpleJdbcInsert(mysqlDataSource);
@@ -157,15 +156,20 @@ public class BeanConfig {
 	public BlockingQueue<DimensionMetadata> dimensionMetadataBlockingQueue() {
 		return new LinkedBlockingQueue<DimensionMetadata>();
 	}
-	
+
 	@Bean(name = "deleteOperationMetadataBlockingQueue")
 	public BlockingQueue<DeleteOperationMetadata> deleteOperationMetadataBlockingQueue() {
 		return new LinkedBlockingQueue<DeleteOperationMetadata>();
 	}
-	
+
 	@Bean(name = "insertOperationMetadataBlockingQueue")
-	public BlockingQueue<InsertOperationMetadata> insertOperationMetadataBlockingQueue(){
+	public BlockingQueue<InsertOperationMetadata> insertOperationMetadataBlockingQueue() {
 		return new LinkedBlockingQueue<InsertOperationMetadata>();
+	}
+
+	@Bean(name = "updateOperationMetadataBlockingQueue")
+	public BlockingQueue<UpdateOperationMetadata> updateOperationMetadataBlockingQueue() {
+		return new LinkedBlockingQueue<UpdateOperationMetadata>();
 	}
 
 	@Bean(name = "dimensionProcessingExecutorService")

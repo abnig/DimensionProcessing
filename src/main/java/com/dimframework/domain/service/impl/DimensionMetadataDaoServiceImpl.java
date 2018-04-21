@@ -28,7 +28,7 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 
 	@Autowired
 	private DimensionMetadataDao dimensionMetadataDaoImpl;
-	
+
 	@Resource
 	@Qualifier("fieldDelimiter")
 	private String fieldDelimiter;
@@ -36,11 +36,11 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 	@Resource
 	@Qualifier("recordTerminator")
 	private String recordTerminator;
-	
+
 	@Resource
 	@Qualifier("hashDataFilesBasePath")
 	private String hashDataFilesBasePath;
-	
+
 	@Resource
 	@Qualifier("schemaName")
 	private String schemaName;
@@ -49,7 +49,8 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 	public List<DimensionMetadata> getByDomainName(String domainName, Date effectiveStartDate, Date effectiveEndDate) {
 		Optional<List<DimensionMetadata>> list = this.dimensionMetadataDaoImpl.getByDomainName(domainName);
 		List<DimensionMetadata> list2 = new ArrayList<DimensionMetadata>();
-		list.ifPresent(dimensionMetadataList -> dimensionMetadataList.forEach(c -> list2.add(new DimensionMetadata(c, effectiveStartDate, effectiveEndDate, fieldDelimiter,  recordTerminator, hashDataFilesBasePath))));
+		list.ifPresent(dimensionMetadataList -> dimensionMetadataList.forEach(c -> list2.add(new DimensionMetadata(c,
+				effectiveStartDate, effectiveEndDate, fieldDelimiter, recordTerminator, hashDataFilesBasePath))));
 		return list2;
 	}
 
@@ -57,102 +58,140 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 	public void truncateTable(String tableName) {
 		this.dimensionMetadataDaoImpl.truncateTable(tableName);
 	}
-	
+
 	@Override
 	public UpdateOperationMetadata generateUpdateOperationBatchJobMetadata(DimensionMetadata dimensionMetadata,
 			Long processId) {
 		/*
-		SELECT NH.*
-FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH 
-		NH ON DH.HASH_PK = NH.HASH_PK AND DH.IS_ACTV_FL = 'Y'
-        WHERE DH.HASH_COL <> NH.HASH_COL;
-        
+		 * SELECT NH.* FROM dim.employee_DIM DH RIGHT OUTER JOIN dim.employee_HASH NH ON
+		 * DH.HASH_PK = NH.HASH_PK AND DH.IS_ACTV_FL = 'Y' WHERE DH.HASH_COL <>
+		 * NH.HASH_COL;
+		 * 
 		 */
-		StringBuilder selectSQL = new StringBuilder(" SELECT DH.").append(dimensionMetadata.getSourceTablePKColumns()).append(" , ").append(dimensionMetadata.getSourceTableDataColumns());
-		selectSQL.append(" FROM " ).append(schemaName).append(".").append(dimensionMetadata.getDimTable()).append(" DH ");
-		selectSQL.append(" RIGHT OUTER JOIN ").append(dimensionMetadata.getSourceTableHash()).append(" NH ON ");
-		selectSQL.append(" DH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" = ").append(" NH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" AND ");
-		selectSQL.append(" DH.ISACTV_FL = 'Y' WHERE ").append(" DH.").append(dimensionMetadata.getDataFieldsHashColumn()).append(" <> ").append(" NH.").append(dimensionMetadata.getDataFieldsHashColumn()).append(";");
-		
-		//         UPDATE dim.employee_dim DH SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effEndDate WHERE DH.HASH_PK IN (:colHashPK);
+
+		String sourceTablePKColumns = appendTableAlias("DH.", dimensionMetadata.getSourceTablePKColumns());
+		String sourceTableDataColumns = appendTableAlias("DH.", dimensionMetadata.getSourceTableDataColumns());
+
+		StringBuilder selectSQL = new StringBuilder(" SELECT ").append(sourceTablePKColumns)
+				.append(" , ").append(sourceTableDataColumns).append(" , ");
+		selectSQL.append("DH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" , ");
+		selectSQL.append("DH.").append(dimensionMetadata.getDataFieldsHashColumn());
+		selectSQL.append(" FROM ").append(schemaName).append(".").append(dimensionMetadata.getDimTable());
+		selectSQL.append(" DH  RIGHT OUTER JOIN ").append(dimensionMetadata.getSourceTableHash());
+		selectSQL.append(" NH ON  DH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" = ").append(" NH.")
+				.append(dimensionMetadata.getPrimaryKeyHashColumn());
+		selectSQL.append(" AND DH.IS_ACTV_FL = 'Y' WHERE DH.").append(dimensionMetadata.getDataFieldsHashColumn())
+				.append(" <> NH.").append(dimensionMetadata.getDataFieldsHashColumn()).append(";");
+
+		// UPDATE dim.employee_dim DH SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effEndDate
+		// WHERE DH.HASH_PK IN (:colHashPK);
 		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
-		updateSQL.append(" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK; ");
-		
+		updateSQL.append(
+				" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK AND DH.IS_ACTV_FL = 'Y'; ");
+
 		/*
-		LOAD DATA LOCAL INFILE '/dimension-processing/hash-datafiles/test.dat' INTO TABLE dim.employee_hash 
-		FIELDS TERMINATED BY '|'
-		LINES TERMINATED BY '~'
-		(emp_ID,
-		name,
-		salary,
-		HASH_PK,
-		HASH_COL);
-	*/
-		String fileName = new StringBuilder(dimensionMetadata.getHashDataFilesBasePath()).append(processId.toString()).append(dimensionMetadata.getDimTable()).append("_update").toString();
+		 * LOAD DATA LOCAL INFILE '/dimension-processing/hash-datafiles/test.dat' INTO
+		 * TABLE dim.employee_hash FIELDS TERMINATED BY '|' LINES TERMINATED BY '~'
+		 * (emp_ID, name, salary, HASH_PK, HASH_COL);
+		 */
+		String fileName = new StringBuilder(dimensionMetadata.getHashDataFilesBasePath()).append(processId.toString())
+				.append(dimensionMetadata.getDimTable()).append("_update").toString();
 		StringBuilder sql = new StringBuilder("LOAD DATA LOCAL INFILE '").append(fileName).append("'");
 		sql.append(" INTO TABLE ").append(schemaName).append(".").append(dimensionMetadata.getDimTable());
-		sql.append(" FIELDS TERMINATED BY '").append(dimensionMetadata.getFieldDelimiter()).append("'"); 
+		sql.append(" FIELDS TERMINATED BY '").append(dimensionMetadata.getFieldDelimiter()).append("'");
 		sql.append(" LINES TERMINATED BY '").append(dimensionMetadata.getRecordTerminator()).append("' (");
 		sql.append(dimensionMetadata.getSourceTablePKColumns()).append(", ");
 		sql.append(dimensionMetadata.getSourceTableDataColumns()).append(", ");
 		sql.append(dimensionMetadata.getPrimaryKeyHashColumn()).append(", ");
 		sql.append(dimensionMetadata.getDataFieldsHashColumn()).append(");");
 		String loadSQLString = sql.toString();
-		logger.info("SQL Command to load into " + dimensionMetadata.getSourceTableHash() + " table is: " + loadSQLString);
-		UpdateOperationMetadata updateOperationMetadata = new UpdateOperationMetadata(dimensionMetadata, schemaName, processId, fileName, selectSQL.toString(), updateSQL.toString(), loadSQLString);
+		logger.info(
+				"SQL Command to load into " + dimensionMetadata.getSourceTableHash() + " table is: " + loadSQLString);
+		UpdateOperationMetadata updateOperationMetadata = new UpdateOperationMetadata(dimensionMetadata, schemaName,
+				processId, fileName, selectSQL.toString(), updateSQL.toString(), loadSQLString);
 		return updateOperationMetadata;
 	}
 
+	private String appendTableAlias(String tableAlias, String columnsListCSV) {
+		String[] arr = columnsListCSV.split(",");
+		StringBuilder sss = new StringBuilder();
+		switch (arr.length) {
+		case 1:
+			sss.append(tableAlias).append(arr[0].trim());
+			break;
+		default:
+			int n = arr.length;
+			int cnt = 1;
+			for (String ss : arr) {
+				if (cnt < n)
+					sss.append(tableAlias).append(ss.trim()).append(",");
+				else {
+					sss.append(tableAlias).append(ss.trim());
+				}
+				cnt++;
+			}
+		}
+		return sss.toString();
+	}
+
 	@Override
-	public DeleteOperationMetadata generateDeleteOperationBatchJobMetadata(DimensionMetadata dimensionMetadata,  Long processId) {
-		// SELECT DH.HASH_PK 		FROM dim.employee_dim DH  LEFT OUTER JOIN dim.employee_hash NH  ON DH.HASH_PK = NH.HASH_PK  WHERE DH.IS_ACTV_FL = 'Y' AND NH.HASH_PK IS NULL;
+	public DeleteOperationMetadata generateDeleteOperationBatchJobMetadata(DimensionMetadata dimensionMetadata,
+			Long processId) {
+		// SELECT DH.HASH_PK FROM dim.employee_dim DH LEFT OUTER JOIN dim.employee_hash
+		// NH ON DH.HASH_PK = NH.HASH_PK WHERE DH.IS_ACTV_FL = 'Y' AND NH.HASH_PK IS
+		// NULL;
 		StringBuilder selectSQL = new StringBuilder(" SELECT DH.HASH_PK ");
 		selectSQL.append(" FROM ").append(dimensionMetadata.getDimTable()).append(" DH ");
-		selectSQL.append(" WHERE NOT EXISTS (SELECT 1 FROM ").append(dimensionMetadata.getSourceTableHash()).append(" NH ");
+		selectSQL.append(" WHERE NOT EXISTS (SELECT 1 FROM ").append(dimensionMetadata.getSourceTableHash())
+				.append(" NH ");
 		selectSQL.append(" WHERE DH.HASH_PK = NH.HASH_PK ");
 		selectSQL.append(" AND DH.IS_ACTV_FL = 'Y' );");
-		logger.info("Delete Step; SELECT Query - " + selectSQL); 
-		// SELECT DH.HASH_PK  FROM employee_dim DH  
-		// WHERE NOT EXISTS (SELECT 1 FROM dim.employee_hash NH  WHERE NH.HASH_PK = DH.HASH_PK AND DH.IS_ACTV_FL = 'Y');
-		//         UPDATE dim.employee_dim DH SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effEndDate WHERE DH.HASH_PK IN (:colHashPK);
+		logger.info("Delete Step; SELECT Query - " + selectSQL);
+
 		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
 		updateSQL.append(" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK; ");
-		DeleteOperationMetadata p = new DeleteOperationMetadata(dimensionMetadata, schemaName, processId, selectSQL.toString(), updateSQL.toString());
+		DeleteOperationMetadata p = new DeleteOperationMetadata(dimensionMetadata, schemaName, processId,
+				selectSQL.toString(), updateSQL.toString());
 		return p;
 	}
 
 	@Override
-	public PopulateHashBatchJobMetadata generatePopulateHashBatchJobMetadata(DimensionMetadata dimensionMetadata, DimensionProcessLog runLog) {
+	public PopulateHashBatchJobMetadata generatePopulateHashBatchJobMetadata(DimensionMetadata dimensionMetadata,
+			DimensionProcessLog runLog) {
 		StringBuilder selectSQL = new StringBuilder("SELECT concat(");
 		// concat(NODE_ID, '\'PK_END_MARKER\'')
 		selectSQL.append(dimensionMetadata.getSourceTablePKColumns()).append(", 'PK_END_MARKER'), ");
 		selectSQL.append(dimensionMetadata.getSourceTableDataColumns()).append(" ");
 		selectSQL.append(" FROM ").append(dimensionMetadata.getSourceTable());
-		
-		StringBuilder insertSQL = new StringBuilder("INSERT INTO ").append(dimensionMetadata.getSourceTableHash()).append("(");
+
+		StringBuilder insertSQL = new StringBuilder("INSERT INTO ").append(dimensionMetadata.getSourceTableHash())
+				.append("(");
 		insertSQL.append(dimensionMetadata.getSourceTablePKColumns()).append(",");
 		insertSQL.append(dimensionMetadata.getSourceTableDataColumns()).append(",");
 		insertSQL.append("HASH_PK, HASH_COL) VALUES( ");
 		insertSQL.append(generateValuesClauseForPopulateHashBatchJob(dimensionMetadata));
 		insertSQL.append(" );");
-		String fullyQualifiedFileName = 	this.hashDataFilesBasePath.concat(runLog.getProcessId().toString()).concat(dimensionMetadata.getSourceTable());
-		PopulateHashBatchJobMetadata p = new PopulateHashBatchJobMetadata(dimensionMetadata, selectSQL.toString(),  insertSQL.toString(), runLog, fullyQualifiedFileName, runLog.getProcessId(), this.schemaName);
+		String fullyQualifiedFileName = this.hashDataFilesBasePath.concat(runLog.getProcessId().toString())
+				.concat(dimensionMetadata.getSourceTable());
+		PopulateHashBatchJobMetadata p = new PopulateHashBatchJobMetadata(dimensionMetadata, selectSQL.toString(),
+				insertSQL.toString(), runLog, fullyQualifiedFileName, runLog.getProcessId(), this.schemaName);
 		return p;
 	}
-	
-	private String generateValuesClauseForPopulateHashBatchJob(DimensionMetadata dimensionMetadata){
-		StringBuilder columnNamesCSV = new StringBuilder(dimensionMetadata.getSourceTablePKColumns()).append(",").append(dimensionMetadata.getSourceTableDataColumns());
+
+	private String generateValuesClauseForPopulateHashBatchJob(DimensionMetadata dimensionMetadata) {
+		StringBuilder columnNamesCSV = new StringBuilder(dimensionMetadata.getSourceTablePKColumns()).append(",")
+				.append(dimensionMetadata.getSourceTableDataColumns());
 		String[] str = columnNamesCSV.toString().split(",");
 		StringBuilder valuesClause = new StringBuilder();
 		int s = 1;
-		for(s = 1; s<= str.length + 1; s++) { 
+		for (s = 1; s <= str.length + 1; s++) {
 			valuesClause.append(":").append(s).append(",");
 		}
-		
+
 		valuesClause.append(":" + s++);
 		return valuesClause.toString();
 	}
-	
+
 	@Override
 	public String concatenatePKHashAndDataColumnHash(String rowData) {
 		// remove the record terminator char
@@ -165,20 +204,19 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 		rowDataHash.append(dataColumnHash).append(fieldDelimiter);
 		logger.debug("row data to be written to file: " + rowDataHash);
 		return rowDataHash.toString();
-	}	
+	}
 
 	private String generateHashCode(String string) {
 		return org.apache.commons.codec.digest.DigestUtils.sha256Hex(string);
-	}	
+	}
 
 	private String generatePKHash(String rowData) {
 		String[] str = seperatePKAndDataColumns(rowData);
 		String pk = removeLastComma(str[0]);
 		String hashPK = this.generateHashCode(pk);
-		logger.debug("Primary Key Value is " + pk + "; hash=" +hashPK);
+		logger.debug("Primary Key Value is " + pk + "; hash=" + hashPK);
 		return hashPK;
 	}
-
 
 	private String generateDataColumnHash(String rowDataCSV) {
 		logger.debug("Row Data Received " + rowDataCSV);
@@ -193,7 +231,6 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 		logger.debug("Data Cols before Hashing " + rowAfterManipulation + "hash=" + hashDataCols);
 		return hashDataCols;
 	}
-
 
 	private String[] seperatePKAndDataColumns(String rowDataCSV) {
 		String pkEndMarker = "PK_END_MARKER";
@@ -218,13 +255,19 @@ FROM dim.employee_dim DH RIGHT OUTER JOIN dim.employee_HASH
 	}
 
 	@Override
-	public void executeLoadIntoHash(PopulateHashBatchJobMetadata  hashFileMetadata) {
+	public void executeLoadIntoHash(PopulateHashBatchJobMetadata hashFileMetadata) {
 		this.dimensionMetadataDaoImpl.executeLoadIntoHash(hashFileMetadata);
 	}
 
 	@Override
 	public void executeLoadIntoDimensionTable(InsertOperationMetadata insertOperationMetadata) {
 		this.dimensionMetadataDaoImpl.executeLoadIntoDimensionTable(insertOperationMetadata);
+	}
+
+	@Override
+	public void executeLoadIntoDimensionTable(UpdateOperationMetadata updateOperationMetadata) {
+		this.dimensionMetadataDaoImpl.executeLoadIntoDimensionTable(updateOperationMetadata);
+
 	}
 
 }

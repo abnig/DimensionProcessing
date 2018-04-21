@@ -20,6 +20,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 
 import com.dimframework.domain.service.DimensionMetadataService;
+import com.dimframework.rowmapper.CommonRowMapper;
 import com.dimframework.rowmapper.InsertCommonRowMapper;
 
 @Service("operationMetadataService")
@@ -48,6 +49,10 @@ public class OperationMetadataService {
 	
 	@Autowired
 	InsertCommonRowMapper insertCommonRowMapper;
+	
+	@Autowired
+	CommonRowMapper commonRowMapper;
+
 
 	@Autowired
 	DimensionMetadataService dimensionMetadataDaoServiceImpl;
