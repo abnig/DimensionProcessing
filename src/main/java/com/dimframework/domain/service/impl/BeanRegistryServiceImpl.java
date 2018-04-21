@@ -19,6 +19,10 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.builder.FlowBuilder;
+import org.springframework.batch.core.job.flow.Flow;
+import org.springframework.batch.core.job.flow.FlowExecutionStatus;
+import org.springframework.batch.core.job.flow.JobExecutionDecider;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
@@ -88,6 +92,9 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 	
 	@Autowired
 	private DimensionMetadataService dimensionMetadataDaoServiceImpl;
+	
+	@Autowired
+	private JobExecutionDecider completeJobOnNoDataReadJobExecutionDecider;
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
@@ -313,8 +320,30 @@ public class BeanRegistryServiceImpl implements BeanRegistryService, Initializin
 		
 		String name = "LoadHash_" + o.getDimensionMetadata().getSourceTable() + "_Job_" + o.getDimensionProcessLog().getProcessId();
 		try {
-			return jobBuilderFactory.get(name).repository(jobRepository.getObject()).incrementer(new RunIdIncrementer())
-					.flow(createStep(o)).next(createLoadIntoHashColumnsStep(o)).end().build();
+			
+			FlowBuilder<Flow> flowBuilder = new FlowBuilder<Flow>("LoadHashFlow");
+			
+		    Flow flow = flowBuilder
+			        .start(createStep(o))
+			        .next(completeJobOnNoDataReadJobExecutionDecider)
+			        .on("CONTINUE")
+			        .to(createLoadIntoHashColumnsStep(o))
+			        .from(completeJobOnNoDataReadJobExecutionDecider)
+			        .on(FlowExecutionStatus.COMPLETED.getName())
+			        .end()
+			        .build();
+		    
+			return jobBuilderFactory.get(name)
+					.repository(jobRepository.getObject())
+					.incrementer(new RunIdIncrementer())
+					.start(flow)
+					.end()
+					.build();
+			
+			
+			
+//			return jobBuilderFactory.get(name).repository(jobRepository.getObject()).incrementer(new RunIdIncrementer())
+//					.flow(createStep(o)).next(createLoadIntoHashColumnsStep(o)).end().build();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
