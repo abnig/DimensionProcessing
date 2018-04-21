@@ -3,7 +3,6 @@ package com.dimframework.database.support;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.batch.core.ItemReadListener;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
 import org.springframework.batch.item.ItemStreamWriter;
