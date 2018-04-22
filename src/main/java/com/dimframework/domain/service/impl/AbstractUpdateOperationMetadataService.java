@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.dimframework.database.support.CustomSqlParameterSourceProvider;
+import com.dimframework.database.support.DimensionProcessingStepExecutionListener;
 import com.dimframework.database.support.UpdateOperationCompositeWriter;
 import com.dimframework.database.support.UpdateProcessItemProcessor;
 import com.dimframework.domain.CompositeUpdateDTO;
@@ -43,7 +44,7 @@ public abstract class AbstractUpdateOperationMetadataService extends OperationMe
 		bdb.addPropertyValue("rowMapper", insertCommonRowMapper);
 
 		bdb.addPropertyValue("sql", updateOperationMetadata.getSelectSQL());
-		String name = updateOperationMetadata.getProcessId().toString().concat("_InsertOperationJdbcCursorItemReader");
+		String name = new StringBuilder(updateOperationMetadata.getDimensionMetadata().getSourceTable()).append(updateOperationMetadata.getProcessId().toString()).append("_InsertOperationJdbcCursorItemReader").toString();
 		bdb.addPropertyValue("name", name);
 		beanDefinitionRegistry.registerBeanDefinition(name, bdb.getBeanDefinition());
 		this.addToMap(updateOperationMetadata.getProcessId(), name);
@@ -61,6 +62,7 @@ public abstract class AbstractUpdateOperationMetadataService extends OperationMe
 				.reader((ItemReader<? extends String>) applicationContext.getBean(createUpdateOperationJdbcCursorItemReader(updateOperationMetadata)))
 				.processor(applicationContext.getBean(UpdateProcessItemProcessor.class))
 				.writer((ItemWriter<? super CompositeUpdateDTO>) applicationContext.getBean(createUpdateOperationCompositeWriter(updateOperationMetadata)))
+				.listener(applicationContext.getBean(DimensionProcessingStepExecutionListener.class))
 				.transactionManager(this.transactionManager).build();
 		return step;
 	}
@@ -80,7 +82,7 @@ public abstract class AbstractUpdateOperationMetadataService extends OperationMe
 		BeanDefinitionBuilder bdb1 = BeanDefinitionBuilder
 				.genericBeanDefinition(customSqlParameterSourceProvider.getClass());
 		bdb1.addConstructorArgValue(updateOperationMetadata.getDimensionMetadata().getEffectiveEndDate());
-		String name = updateOperationMetadata.getProcessId().toString().concat("_customSqlParameterSourceProvider");
+		String name = new StringBuilder(updateOperationMetadata.getDimensionMetadata().getSourceTable()).append(updateOperationMetadata.getProcessId().toString()).append("_customSqlParameterSourceProvider").toString();
 		beanDefinitionRegistry.registerBeanDefinition(name, bdb1.getBeanDefinition());
 
 		JdbcBatchItemWriter<String> jdbcBatchItemWriter = new JdbcBatchItemWriter<>();
@@ -92,8 +94,7 @@ public abstract class AbstractUpdateOperationMetadataService extends OperationMe
 		bdb.addPropertyReference("jdbcTemplate", "namedJdbcMySQLTemplate");
 		bdb.addPropertyValue("sql", updateOperationMetadata.getUpdateSQL());
 		bdb.addPropertyReference("itemSqlParameterSourceProvider", name);
-		String nameJdbcBatchItemWriter = updateOperationMetadata.getProcessId().toString()
-				.concat("_jdbcBatchItemWriter");
+		String nameJdbcBatchItemWriter = new StringBuilder(updateOperationMetadata.getDimensionMetadata().getSourceTable()).append(updateOperationMetadata.getProcessId().toString()).append("_jdbcBatchItemWriter").toString();
 		beanDefinitionRegistry.registerBeanDefinition(nameJdbcBatchItemWriter, bdb.getBeanDefinition());
 		return nameJdbcBatchItemWriter;
 	}
@@ -123,7 +124,8 @@ public abstract class AbstractUpdateOperationMetadataService extends OperationMe
 				dimensionMetadataDaoServiceImpl.executeLoadIntoDimensionTable(updateOperationMetadata);
 				return RepeatStatus.FINISHED;
 			}
-		}).transactionManager(this.transactionManager).build();
+		}).listener((applicationContext.getBean(DimensionProcessingStepExecutionListener.class)))
+		.transactionManager(this.transactionManager).build();
 		return step;
 	}
 

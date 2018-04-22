@@ -62,12 +62,6 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 	@Override
 	public UpdateOperationMetadata generateUpdateOperationBatchJobMetadata(DimensionMetadata dimensionMetadata,
 			Long processId) {
-		/*
-		 * SELECT NH.* FROM dim.employee_DIM DH RIGHT OUTER JOIN dim.employee_HASH NH ON
-		 * DH.HASH_PK = NH.HASH_PK AND DH.IS_ACTV_FL = 'Y' WHERE DH.HASH_COL <>
-		 * NH.HASH_COL;
-		 * 
-		 */
 
 		String sourceTablePKColumns = appendTableAlias("DH.", dimensionMetadata.getSourceTablePKColumns());
 		String sourceTableDataColumns = appendTableAlias("DH.", dimensionMetadata.getSourceTableDataColumns());
@@ -83,11 +77,9 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 		selectSQL.append(" AND DH.IS_ACTV_FL = 'Y' WHERE DH.").append(dimensionMetadata.getDataFieldsHashColumn())
 				.append(" <> NH.").append(dimensionMetadata.getDataFieldsHashColumn()).append(";");
 
-		// UPDATE dim.employee_dim DH SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effEndDate
-		// WHERE DH.HASH_PK IN (:colHashPK);
 		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
 		updateSQL.append(
-				" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK AND DH.IS_ACTV_FL = 'Y'; ");
+				" SET DH.IS_ACTV_FL = 'N', DH.EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK AND DH.IS_ACTV_FL = 'Y'; ");
 
 		/*
 		 * LOAD DATA LOCAL INFILE '/dimension-processing/hash-datafiles/test.dat' INTO
@@ -104,50 +96,45 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 		sql.append(dimensionMetadata.getSourceTableDataColumns()).append(", ");
 		sql.append(dimensionMetadata.getPrimaryKeyHashColumn()).append(", ");
 		sql.append(dimensionMetadata.getDataFieldsHashColumn()).append(");");
-		String loadSQLString = sql.toString();
-		logger.info(
-				"SQL Command to load into " + dimensionMetadata.getSourceTableHash() + " table is: " + loadSQLString);
+		
 		UpdateOperationMetadata updateOperationMetadata = new UpdateOperationMetadata(dimensionMetadata, schemaName,
-				processId, fileName, selectSQL.toString(), updateSQL.toString(), loadSQLString);
+				processId, fileName, selectSQL.toString(), updateSQL.toString(), sql.toString());
 		return updateOperationMetadata;
 	}
 
 	private String appendTableAlias(String tableAlias, String columnsListCSV) {
 		String[] arr = columnsListCSV.split(",");
-		StringBuilder sss = new StringBuilder();
+		StringBuilder finalString = new StringBuilder();
 		switch (arr.length) {
 		case 1:
-			sss.append(tableAlias).append(arr[0].trim());
+			finalString.append(tableAlias).append(arr[0].trim());
 			break;
 		default:
 			int n = arr.length;
 			int cnt = 1;
 			for (String ss : arr) {
 				if (cnt < n)
-					sss.append(tableAlias).append(ss.trim()).append(",");
+					finalString.append(tableAlias).append(ss.trim()).append(",");
 				else {
-					sss.append(tableAlias).append(ss.trim());
+					finalString.append(tableAlias).append(ss.trim());
 				}
 				cnt++;
 			}
 		}
-		return sss.toString();
+		return finalString.toString();
 	}
 
 	@Override
 	public DeleteOperationMetadata generateDeleteOperationBatchJobMetadata(DimensionMetadata dimensionMetadata,
 			Long processId) {
-		// SELECT DH.HASH_PK FROM dim.employee_dim DH LEFT OUTER JOIN dim.employee_hash
-		// NH ON DH.HASH_PK = NH.HASH_PK WHERE DH.IS_ACTV_FL = 'Y' AND NH.HASH_PK IS
-		// NULL;
+
 		StringBuilder selectSQL = new StringBuilder(" SELECT DH.HASH_PK ");
 		selectSQL.append(" FROM ").append(dimensionMetadata.getDimTable()).append(" DH ");
 		selectSQL.append(" WHERE NOT EXISTS (SELECT 1 FROM ").append(dimensionMetadata.getSourceTableHash())
 				.append(" NH ");
 		selectSQL.append(" WHERE DH.HASH_PK = NH.HASH_PK ");
-		selectSQL.append(" AND DH.IS_ACTV_FL = 'Y' );");
-		logger.info("Delete Step; SELECT Query - " + selectSQL);
-
+		selectSQL.append(" AND DH.IS_ACTV_FL = 'Y' ) AND DH.IS_ACTV_FL = 'Y' ;");
+		logger.debug("SELECT query for delete operation : " + selectSQL);
 		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
 		updateSQL.append(" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK; ");
 		DeleteOperationMetadata p = new DeleteOperationMetadata(dimensionMetadata, schemaName, processId,
@@ -159,7 +146,7 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 	public PopulateHashBatchJobMetadata generatePopulateHashBatchJobMetadata(DimensionMetadata dimensionMetadata,
 			DimensionProcessLog runLog) {
 		StringBuilder selectSQL = new StringBuilder("SELECT concat(");
-		// concat(NODE_ID, '\'PK_END_MARKER\'')
+
 		selectSQL.append(dimensionMetadata.getSourceTablePKColumns()).append(", 'PK_END_MARKER'), ");
 		selectSQL.append(dimensionMetadata.getSourceTableDataColumns()).append(" ");
 		selectSQL.append(" FROM ").append(dimensionMetadata.getSourceTable());

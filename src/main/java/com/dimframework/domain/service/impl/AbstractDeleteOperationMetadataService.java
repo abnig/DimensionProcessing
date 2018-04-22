@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.dimframework.database.support.CustomSqlParameterSourceProvider;
+import com.dimframework.database.support.DimensionProcessingStepExecutionListener;
 import com.dimframework.domain.DeleteOperationMetadata;
 
 @Service("abstractDeleteOperationMetadataService")
@@ -24,6 +25,7 @@ public abstract class AbstractDeleteOperationMetadataService extends OperationMe
 		TaskletStep step = stepBuilderFactory.get(name).<String, String>chunk(o.getDimensionMetadata().getCommitInterval())
 				.reader((ItemReader<? extends String>) applicationContext.getBean( createDeleteOperationJdbcCursorItemReader(o)))
 				.writer((ItemWriter<? super String>) applicationContext.getBean(createDeleteOperationJdbcCursorItemWriter(o)))
+				.listener((applicationContext.getBean(DimensionProcessingStepExecutionListener.class)))
 				.transactionManager(this.transactionManager).build();
 		return step;
 	}

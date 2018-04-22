@@ -94,7 +94,7 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		// remove files
 		Path path = Paths.get(populateHashBatchJobMetadata.getFileName());
 		if(Files.exists(path))
-			Files.delete(path);
+		  Files.delete(path);
 		DeleteOperationMetadata d = dimensionMetadataDaoServiceImpl.generateDeleteOperationBatchJobMetadata(dimensionMetadata, populateHashBatchJobMetadata.getProcessId());
 		this. deleteOperationMetadataBlockingQueue.offer(d);
 
@@ -109,13 +109,11 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		this.beanRegistryServiceImpl.run(deleteJob, jobParametersBuilder.toJobParameters());
 	    UpdateOperationMetadata u = dimensionMetadataDaoServiceImpl.generateUpdateOperationBatchJobMetadata(deleteOperationMetadata.getDimensionMetadata(), deleteOperationMetadata.getProcessId());
 		this.updateOperationMetadataBlockingQueue.offer(u);
-		logger.info("Completed delete operation for " + deleteOperationMetadata.getDimensionMetadata().getDimTable());
 	}
 	
 	@Override
 	public void processUpdateOperation() throws BeansException, Exception {
 		UpdateOperationMetadata updateOperationMetadata = this.updateOperationMetadataBlockingQueue.take();
-		logger.info("Started update operation for " + updateOperationMetadata.getDimensionMetadata().getDimTable());
 		Job updateJob = updateOperationServiceImpl.instantiateUpdateOperationBatchJob(updateOperationMetadata);
 		// create InsertOperationMetadata object
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
@@ -128,14 +126,12 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		
 		InsertOperationMetadata insertOperationMetadata = this.insertOperationServiceImpl.generateInsertOperationBatchJobMetadata(updateOperationMetadata.getDimensionMetadata(), updateOperationMetadata.getProcessId());
 		this.insertOperationMetadataBlockingQueue.offer(insertOperationMetadata);
-		logger.info("Completed update operation for " + updateOperationMetadata.getDimensionMetadata().getDimTable());
 	}
 	
 	@Override
 	public void processInsertOperation() throws InterruptedException, JobExecutionAlreadyRunningException,
 			JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException, IOException {
 		InsertOperationMetadata insertOperationMetadata = insertOperationMetadataBlockingQueue.take();
-		logger.info("Started insert operation for " + insertOperationMetadata.getDimensionMetadata().getDimTable());
 		Job insertJob = insertOperationServiceImpl.instantiateInsertOperationBatchJob(insertOperationMetadata);
 		JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
 		jobParametersBuilder.addDate("effectiveStartDate", insertOperationMetadata.getDimensionMetadata().getEffectiveStartDate());
@@ -144,7 +140,6 @@ public class DimensionMetadataConsumerServiceImpl implements DimensionMetadataCo
 		Path path = Paths.get(insertOperationMetadata.getFileName());
 		if(Files.exists(path))
 			Files.delete(path);
-		logger.info("Completed insert operation for " + insertOperationMetadata.getDimensionMetadata().getDimTable());
 	}
 
 }

@@ -20,6 +20,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import com.dimframework.database.support.DimensionProcessingStepExecutionListener;
 import com.dimframework.domain.InsertOperationMetadata;
 
 @Service("abstractInsertOperationMetadataService")
@@ -72,6 +73,7 @@ public abstract class AbstractInsertOperationMetadataService extends OperationMe
 						.getBean(createInsertOperationJdbcCursorItemReader(insertOperationMetadata)))
 				.writer((ItemWriter<? super String>) applicationContext
 						.getBean(createFlatFileItemWriter(insertOperationMetadata)))
+				.listener(applicationContext.getBean(DimensionProcessingStepExecutionListener.class))
 				.transactionManager(this.transactionManager).build();
 		return step;
 	}

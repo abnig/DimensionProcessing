@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import com.dimframework.domain.service.DimensionMetadataConsumerService;
 
+@Deprecated
 @Component("updateOperationMetadataConsumerWorker")
 @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class UpdateOperationMetadataConsumerWorker implements Runnable {

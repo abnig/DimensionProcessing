@@ -19,7 +19,6 @@ import com.dimframework.invoker.DimensionProcessInvoker;
 import com.dimframework.workerthread.DeleteOperationMetadataConsumerWorker;
 import com.dimframework.workerthread.DimensionMetadataConsumerWorker;
 import com.dimframework.workerthread.InsertOperationMetadataConsumerWorker;
-import com.dimframework.workerthread.UpdateOperationMetadataConsumerWorker;
 
 @Service("dimensionProcessInvokerImpl")
 public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
@@ -43,8 +42,7 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 		List<DimensionMetadata> list = this.dimensionMetadataDaoServiceImpl.getByDomainName(domainName, effectiveStartDate, effectiveEndDate);
 		this.pushToDimensionMetadataBlockingQueue(list);
 		this.callPerformDimensionProcessing(list, domainName);
-		this.callPerformDeleteOperation(list, domainName);
-		this.callPerformUpdateOperation(list, domainName);
+		this.callPerformDeleteAndUpdateOperation(list, domainName);
 		this.callPerformInsertOperation(list, domainName);
 	}
 
@@ -62,7 +60,7 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 		}
 	}
 
-	private void callPerformDeleteOperation(List<DimensionMetadata> list, String domainName) {
+	private void callPerformDeleteAndUpdateOperation(List<DimensionMetadata> list, String domainName) {
 		CountDownLatch countDownLatch = (CountDownLatch) this.applicationContext.getBean("countDownLatch", list.size());
 		for (int i = 0; i < list.size(); i++) {
 			DeleteOperationMetadataConsumerWorker workerThread = (DeleteOperationMetadataConsumerWorker) this.applicationContext
@@ -71,6 +69,7 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 		}
 	}
 	
+	/*
 	private void callPerformUpdateOperation(List<DimensionMetadata> list, String domainName) {
 		CountDownLatch countDownLatch = (CountDownLatch) this.applicationContext.getBean("countDownLatch", list.size());
 		for (int i = 0; i < list.size(); i++) {
@@ -79,6 +78,7 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 			this.dimensionProcessingExecutorService.execute(workerThread);
 		}
 	}
+	*/
 	
 	private void callPerformInsertOperation(List<DimensionMetadata> list, String domainName) {
 		CountDownLatch countDownLatch = (CountDownLatch) this.applicationContext.getBean("countDownLatch", list.size());
