@@ -37,6 +37,7 @@ public class DeleteOperationMetadataConsumerWorker implements Runnable {
 		try {
 			this.dimensionMetadataConsumerServiceImpl.processDeleteOperation();
 			this.dimensionMetadataConsumerServiceImpl.processUpdateOperation();
+			this.dimensionMetadataConsumerServiceImpl.processInsertOperation();
 		} catch (InterruptedException | JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
 			if (e.getLocalizedMessage() == null) {
 				logger.info(Thread.currentThread().getName() + " terminating normally");

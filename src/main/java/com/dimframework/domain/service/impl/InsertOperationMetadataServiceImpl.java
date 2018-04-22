@@ -69,7 +69,7 @@ public class InsertOperationMetadataServiceImpl extends AbstractInsertOperationM
 		selectSQL.append(" FROM ").append(this.schemaName).append(".").append(dimensionMetadata.getSourceTableHash()).append(" NH ");
 		selectSQL.append(" WHERE NOT EXISTS (SELECT 1 FROM ").append(this.schemaName).append(".").append(dimensionMetadata.getDimTable()).append(" DH ");
 		selectSQL.append(" WHERE NH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" = DH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" AND DH.IS_ACTV_FL = 'Y');");
-		logger.debug("SELECT Query to create file for insert operation: " + selectSQL.toString());
+		logger.info("SELECT Query to create file for insert operation: " + selectSQL.toString());
 		
 		String fileName = new StringBuilder(dimensionMetadata.getHashDataFilesBasePath()).append(processId.toString()).append(dimensionMetadata.getDimTable()).append("_insert").toString();
 		StringBuilder insertSQL = new StringBuilder(" LOAD DATA LOCAL INFILE ").append("'").append(fileName).append("'").append(" INTO TABLE ").append(this.schemaName).append(".").append(dimensionMetadata.getDimTable());

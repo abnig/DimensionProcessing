@@ -69,7 +69,7 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 		StringBuilder selectSQL = new StringBuilder(" SELECT ").append(sourceTablePKColumns)
 				.append(" , ").append(sourceTableDataColumns).append(" , ");
 		selectSQL.append("DH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" , ");
-		selectSQL.append("DH.").append(dimensionMetadata.getDataFieldsHashColumn());
+		selectSQL.append("DH.").append(dimensionMetadata.getDataFieldsHashColumn()).append(" , NH.").append(dimensionMetadata.getDataFieldsHashColumn());
 		selectSQL.append(" FROM ").append(schemaName).append(".").append(dimensionMetadata.getDimTable());
 		selectSQL.append(" DH  RIGHT OUTER JOIN ").append(dimensionMetadata.getSourceTableHash());
 		selectSQL.append(" NH ON  DH.").append(dimensionMetadata.getPrimaryKeyHashColumn()).append(" = ").append(" NH.")
@@ -77,6 +77,7 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 		selectSQL.append(" AND DH.IS_ACTV_FL = 'Y' WHERE DH.").append(dimensionMetadata.getDataFieldsHashColumn())
 				.append(" <> NH.").append(dimensionMetadata.getDataFieldsHashColumn()).append(";");
 
+		logger.info("SELECT query for update: " + selectSQL);
 		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
 		updateSQL.append(
 				" SET DH.IS_ACTV_FL = 'N', DH.EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK AND DH.IS_ACTV_FL = 'Y'; ");
@@ -134,7 +135,7 @@ public class DimensionMetadataDaoServiceImpl implements DimensionMetadataService
 				.append(" NH ");
 		selectSQL.append(" WHERE DH.HASH_PK = NH.HASH_PK ");
 		selectSQL.append(" AND DH.IS_ACTV_FL = 'Y' ) AND DH.IS_ACTV_FL = 'Y' ;");
-		logger.debug("SELECT query for delete operation : " + selectSQL);
+		logger.info("SELECT query for delete operation : " + selectSQL);
 		StringBuilder updateSQL = new StringBuilder(" UPDATE ").append(dimensionMetadata.getDimTable()).append(" DH ");
 		updateSQL.append(" SET DH.IS_ACTV_FL = 'N', EFF_END_DT = :effectiveEndDate WHERE DH.HASH_PK = :listHashPK; ");
 		DeleteOperationMetadata p = new DeleteOperationMetadata(dimensionMetadata, schemaName, processId,

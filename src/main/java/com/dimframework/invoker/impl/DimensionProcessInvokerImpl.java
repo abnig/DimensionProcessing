@@ -43,7 +43,7 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 		this.pushToDimensionMetadataBlockingQueue(list);
 		this.callPerformDimensionProcessing(list, domainName);
 		this.callPerformDeleteAndUpdateOperation(list, domainName);
-		this.callPerformInsertOperation(list, domainName);
+	//	this.callPerformInsertOperation(list, domainName);
 	}
 
 	private void pushToDimensionMetadataBlockingQueue(List<DimensionMetadata> list) {
@@ -78,7 +78,7 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 			this.dimensionProcessingExecutorService.execute(workerThread);
 		}
 	}
-	*/
+	
 	
 	private void callPerformInsertOperation(List<DimensionMetadata> list, String domainName) {
 		CountDownLatch countDownLatch = (CountDownLatch) this.applicationContext.getBean("countDownLatch", list.size());
@@ -88,5 +88,5 @@ public class DimensionProcessInvokerImpl implements DimensionProcessInvoker {
 			this.dimensionProcessingExecutorService.execute(workerThread);
 		}
 	}
-
+*/
 }
